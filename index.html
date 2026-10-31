@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>Mis subrayados</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Saltar al contenido</a>
+
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <h1 class="brand"><a href="#/buscar">Mis subrayados</a></h1>
+      <div class="bar-end">
+        <button class="btn quiet" id="btnData" aria-expanded="false" aria-controls="dataPanel">Mis datos</button>
+        <button class="btn quiet" id="btnTheme" aria-label="Cambiar tema de color">Auto</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="stick">
+  <div class="wrap">
+    <form class="search" role="search" id="searchForm" autocomplete="off">
+      <label class="sr" for="q">Buscar en las citas</label>
+      <input id="q" type="search" placeholder="Buscar una palabra o frase…" enterkeyhint="search" spellcheck="false">
+      <button type="button" class="btn quiet" id="btnFilters" aria-expanded="false" aria-controls="filters">Filtros</button>
+    </form>
+
+    <div class="panel" id="dataPanel" hidden>
+      <p><strong>Tus marcas se guardan solo en este navegador.</strong> Si cambiás de dispositivo o borrás los datos del navegador, se pierden. Exportá una copia para respaldarlas.</p>
+      <p class="muted" id="dataStats"></p>
+      <div class="row">
+        <button class="btn" id="btnExport">Exportar</button>
+        <button class="btn" id="btnImport">Importar…</button>
+        <input type="file" id="fileImport" accept="application/json,.json" hidden>
+      </div>
+    </div>
+
+    <div class="panel" id="filters" hidden>
+      <div class="grid">
+        <label>Libro <select id="fLibro"></select></label>
+        <label>Tema <select id="fTema"></select></label>
+        <label>Autor <select id="fAutor"></select></label>
+        <label>Uso <select id="fUso"></select></label>
+        <label>Categoría <select id="fCat">
+          <option value="">Todas</option>
+          <option value="nf">No ficción</option>
+          <option value="fic">Ficción</option>
+          <option value="doc">Documentos</option>
+        </select></label>
+        <label class="check"><input type="checkbox" id="fFav"> Solo favoritas ★</label>
+      </div>
+      <div class="row"><button class="btn" id="btnClear">Limpiar filtros</button></div>
+    </div>
+
+    <nav class="tabs" aria-label="Secciones" id="tabs">
+      <a href="#/buscar" data-v="buscar">Buscar</a>
+      <a href="#/libros" data-v="libros">Libros</a>
+      <a href="#/temas" data-v="temas">Temas</a>
+      <a href="#/autores" data-v="autores">Autores</a>
+      <a href="#/favoritas" data-v="favoritas">Favoritas</a>
+      <a href="#/repaso" data-v="repaso">Repaso</a>
+    </nav>
+  </div>
+</div>
+
+<main id="main" class="wrap" tabindex="-1">
+  <div id="chips" class="chips" aria-label="Filtros activos"></div>
+  <div class="status">
+    <p id="count" role="status" aria-live="polite" aria-atomic="true"></p>
+    <label class="fmt">Copiar como
+      <select id="fFmt">
+        <option value="ref">“cita” (Autor, Título, pos.)</option>
+        <option value="md">Markdown (&gt; cita)</option>
+        <option value="txt">Solo el texto</option>
+      </select>
+    </label>
+  </div>
+  <div id="view"></div>
+</main>
+
+<footer class="wrap foot">
+  <p>Atajos: <kbd>/</kbd> buscar · <kbd>Esc</kbd> limpiar · <kbd>j</kbd>/<kbd>k</kbd> moverse · <kbd>c</kbd> copiar · <kbd>f</kbd> favorita</p>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

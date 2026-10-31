@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Mis subrayados</title>
+<style>
+:root{
+  --ink:#1F2A44; --acc:#B5532F; --sand:#F6F1E9; --line:#D9D2C5; --gray:#6B7280;
+  --bg:#FFFFFF; --card:#FFFFFF; --text:#222222; --chip:#EFE8DC; --mark:#FFE9A8;
+  --serif:Georgia,'Times New Roman',serif; --sans:system-ui,-apple-system,'Segoe UI',Calibri,Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E6EAF5; --acc:#E3865F; --sand:#1E232E; --line:#343B4A; --gray:#9AA3B2;
+    --bg:#12151C; --card:#181C25; --text:#E4E7EE; --chip:#262C39; --mark:#5A4A12; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E6EAF5; --acc:#E3865F; --sand:#1E232E; --line:#343B4A; --gray:#9AA3B2;
+  --bg:#12151C; --card:#181C25; --text:#E4E7EE; --chip:#262C39; --mark:#5A4A12; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:150px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.5}
+a{color:var(--acc);cursor:pointer;text-decoration:none}
+a:hover{text-decoration:underline}
+button,select,input{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px 0}
+.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+h1{font-family:var(--serif);font-size:1.35rem;margin:0;color:var(--ink)}
+.count{color:var(--gray);font-size:.85rem}
+.spacer{flex:1}
+nav{display:flex;gap:2px;overflow-x:auto;margin-top:6px}
+nav button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;cursor:pointer;color:var(--gray);white-space:nowrap;font-weight:600}
+nav button.on{color:var(--ink);border-bottom-color:var(--acc)}
+nav button:hover{color:var(--ink)}
+.btn{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.85rem}
+.btn:hover{border-color:var(--acc)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+main{max-width:980px;margin:0 auto;padding:16px}
+.view{display:none}.view.on{display:block}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+#q{flex:1 1 280px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:1rem}
+#q:focus,select:focus{outline:2px solid var(--acc);outline-offset:1px}
+select{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);max-width:100%}
+label.chk{display:inline-flex;gap:5px;align-items:center;font-size:.9rem;cursor:pointer}
+.meta{color:var(--gray);font-size:.85rem;margin:6px 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.card.fav{border-left-color:var(--acc)}
+.card blockquote{margin:0;font-family:var(--serif);font-size:1.05rem;line-height:1.6;white-space:pre-wrap}
+.card blockquote .el{color:var(--gray)}
+mark{background:var(--mark);color:inherit;border-radius:2px}
+.src{margin-top:8px;font-size:.85rem;color:var(--gray)}
+.src b{color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{background:var(--chip);border-radius:999px;padding:2px 10px;font-size:.78rem;color:var(--ink);border:0;cursor:pointer}
+.chip.uso{background:transparent;border:1px solid var(--acc);color:var(--acc)}
+.chip.uso i{font-style:normal;margin-left:4px;opacity:.7}
+.note{background:var(--sand);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.9rem}
+.actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.star{font-size:1.1rem;line-height:1;padding:4px 9px}
+.star.on{color:var(--acc);border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.tile:hover{border-color:var(--acc)}
+.tile .t{font-family:var(--serif);font-weight:700;color:var(--ink)}
+.tile .s{color:var(--gray);font-size:.8rem;margin-top:2px}
+h2.sec{font-family:var(--serif);color:var(--ink);font-size:1rem;letter-spacing:.06em;text-transform:uppercase;margin:22px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.more{display:block;margin:14px auto;padding:9px 20px}
+.empty{color:var(--gray);padding:30px;text-align:center}
+.pop{position:fixed;z-index:50;background:var(--card);border:1px solid var(--acc);border-radius:10px;padding:10px;box-shadow:0 8px 30px rgba(0,0,0,.25);max-width:300px}
+.pop label{display:block;padding:3px 0;font-size:.9rem;cursor:pointer}
+.pop .row{display:flex;gap:6px;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:60}
+#toast.on{opacity:1}
+.help h3{font-family:var(--serif);color:var(--ink);margin:20px 0 4px}
+.help p,.help li{max-width:70ch}
+.rev .card blockquote{font-size:1.25rem}
+.hide{filter:blur(7px);user-select:none}
+@media (max-width:600px){main{padding:10px}h1{font-size:1.15rem}.card{padding:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>Mis subrayados</h1>
+    <span class="count" id="count"></span>
+    <span class="spacer"></span>
+    <button class="btn" id="btnTheme" title="Claro / oscuro / automático">◐ Tema</button>
+    <button class="btn" id="btnData" title="Exportar o importar favoritas, etiquetas y temas editados">Mis datos ▾</button>
+  </div>
+  <nav id="nav">
+    <button data-v="buscar" class="on">Buscar</button>
+    <button data-v="libros">Libros</button>
+    <button data-v="temas">Temas</button>
+    <button data-v="autores">Autores</button>
+    <button data-v="favs">★ Favoritas</button>
+    <button data-v="repaso">Repaso</button>
+    <button data-v="ayuda">Ayuda</button>
+  </nav>
+</header>
+<main>
+  <section class="view on" id="v-buscar">
+    <div class="bar">
+      <input id="q" type="search" placeholder="Buscar en las citas, libros y autores…  ( / )" autocomplete="off">
+    </div>
+    <div class="bar">
+      <select id="fBook"><option value="">Todos los libros</option></select>
+      <select id="fTheme"><option value="">Todos los temas</option></select>
+      <select id="fAuthor"><option value="">Todos los autores</option></select>
+      <select id="fUso"><option value="">Cualquier uso</option></select>
+      <label class="chk"><input type="checkbox" id="fFav"> ★ solo favoritas</label>
+    </div>
+    <div class="bar">
+      <label class="chk"><input type="checkbox" data-cat="nf" checked> No ficción</label>
+      <label class="chk"><input type="checkbox" data-cat="fic" checked> Ficción</label>
+      <label class="chk"><input type="checkbox" data-cat="doc" checked> Documentos</label>
+      <span class="spacer"></span>
+      <label class="chk">Copiar como
+        <select id="fFmt">
+          <option value="ref">“cita” (Autor, Título, pos.)</option>
+          <option value="md">Markdown (> cita)</option>
+          <option value="txt">Solo el texto</option>
+        </select>
+      </label>
+      <button class="btn" id="btnClear">Limpiar filtros</button>
+    </div>
+    <div class="meta" id="resMeta"></div>
+    <div id="results"></div>
+    <button class="btn more" id="btnMore" style="display:none">Mostrar más</button>
+  </section>
+
+  <section class="view" id="v-libros"><div class="bar"><input id="qLibros" type="search" placeholder="Filtrar libros…" style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)"></div><div id="libros"></div></section>
+  <section class="view" id="v-temas"><div class="grid" id="temas"></div></section>
+  <section class="view" id="v-autores"><div class="bar"><input id="qAutores" type="search" placeholder="Filtrar autores…" style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)"></div><div class="grid" id="autores"></div></section>
+  <section class="view" id="v-favs">
+    <div class="bar"><button class="btn pri" id="btnCopyFavs">Copiar todas las favoritas</button><span class="count" id="favCount"></span></div>
+    <div id="favList"></div>
+  </section>
+  <section class="view rev" id="v-repaso">
+    <div class="bar">
+      <select id="rTheme"><option value="">Todos los temas</option></select>
+      <label class="chk"><input type="checkbox" id="rFav"> solo favoritas</label>
+      <label class="chk"><input type="checkbox" id="rGuess"> adivinar el libro</label>
+      <span class="spacer"></span>
+      <button class="btn pri" id="btnNext">Otra cita →</button>
+    </div>
+    <div id="revCard"></div>
+  </section>
+  <section class="view help" id="v-ayuda">
+    <h3>Qué es esto</h3>
+    <p>Tus subrayados de Kindle y de libros físicos, ordenados por libro y por tema. Todo funciona sin conexión: no se envía nada a ningún servidor.</p>
+    <h3>Buscar</h3>
+    <p>La búsqueda ignora tildes y mayúsculas, y exige que aparezcan todas las palabras que escribas. Podés combinarla con los filtros de libro, tema, autor y uso. Con <b>/</b> vas directo al buscador y con <b>Esc</b> lo limpiás.</p>
+    <h3>Copiar para citar</h3>
+    <p>“Copiar cita” arma el texto con autor, título y posición de Kindle (o página si existe). Elegí el formato en “Copiar como”. Si el recorte empieza o termina a mitad de frase, se agrega […]. La posición de Kindle no es una página: para una cita formal tenés que completar edición y página.</p>
+    <h3>Tus marcas (favoritas, usos y temas)</h3>
+    <ul>
+      <li><b>★</b> marca una favorita.</li>
+      <li><b>+ Uso</b> agrega una etiqueta tuya (columna, clase, artículo, charla, o una nueva) para filtrar después según lo que estés escribiendo.</li>
+      <li><b>Temas…</b> corrige los temas de una cita. Los temas iniciales son automáticos y pueden tener errores.</li>
+    </ul>
+    <p><b>Importante:</b> estas marcas se guardan <u>en este navegador</u>, no en el repositorio. Si cambiás de dispositivo o borrás los datos del navegador, se pierden. Usá <b>Mis datos → Exportar</b> para hacer una copia y <b>Importar</b> para recuperarla en otro lado.</p>
+    <h3>Repaso</h3>
+    <p>Muestra una cita al azar, con filtros por tema y por favoritas. Con “adivinar el libro” la fuente queda oculta hasta que hacés clic.</p>
+    <h3>Códigos</h3>
+    <p>Cada cita tiene un código (por ejemplo PC-12) que coincide con el del documento Word “Mis subrayados”.</p>
+  </section>
+</main>
+<div id="toast"></div>
+<script src="data.js"></script>
+<script>
+(function(){
+'use strict';
+const DB=window.SUBRAYADOS, THEMES=DB.themes, TK=Object.keys(THEMES);
+const CAT={nf:'No ficción',fic:'Ficción',doc:'Documentos y materiales'};
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const LS={get(k,d){try{const v=localStorage.getItem('subr_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('subr_'+k,JSON.stringify(v))}catch(e){}}};
+let FAV=new Set(LS.get('fav',[])), USO=LS.get('uso',{}), USOLIST=LS.get('usolist',['columna','clase','artículo','charla']), TEMAS=LS.get('temas',{}), FMT=LS.get('fmt','ref');
+
+const fold=s=>s.split('').map(c=>c.normalize('NFD').charAt(0).toLowerCase()).join('');
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const splitAuthors=a=>a==='—'?[]:a.split(/\s+y\s+|,\s*|\s*;\s*/).map(x=>x.trim()).filter(Boolean);
+
+/* ---- aplanar ---- */
+const ALL=[], BOOK={};
+DB.books.forEach(b=>{BOOK[b.i]=b;b.authors=b.c==='doc'?[]:splitAuthors(b.a);b.mainName=THEMES[b.m];
+  b.q.forEach(q=>{q.b=b;q.fx=fold(q.x);q.fb=fold(b.t+' '+b.a+' '+q.i);ALL.push(q)})});
+const themesOf=q=>TEMAS[q.i]||q.h;
+const usoOf=q=>USO[q.i]||[];
+const AUTHORS={}; DB.books.forEach(b=>b.authors.forEach(a=>{(AUTHORS[a]=AUTHORS[a]||[]).push(b)}));
+
+/* ---- estado ---- */
+const S={q:'',book:'',theme:'',author:'',uso:'',fav:false,cats:{nf:true,fic:true,doc:true},limit:40};
+$('#count').textContent=`${ALL.length} citas · ${DB.books.length} libros`;
+
+/* ---- selects ---- */
+function fillSelects(){
+  const fb=$('#fBook'), cur=fb.value;
+  fb.innerHTML='<option value="">Todos los libros</option>'+['nf','fic','doc'].map(c=>`<optgroup label="${CAT[c]}">`+DB.books.filter(b=>b.c===c).map(b=>`<option value="${b.i}">${esc(b.t)} (${b.n})</option>`).join('')+'</optgroup>').join('');
+  fb.value=cur;
+  const ft=$('#fTheme'), ct=ft.value;
+  const cnt={}; ALL.forEach(q=>themesOf(q).forEach(t=>cnt[t]=(cnt[t]||0)+1));
+  ft.innerHTML='<option value="">Todos los temas</option>'+TK.map(k=>`<option value="${k}">${esc(THEMES[k])} (${cnt[k]||0})</option>`).join(''); ft.value=ct;
+  const fa=$('#fAuthor'), ca=fa.value;
+  fa.innerHTML='<option value="">Todos los autores</option>'+Object.keys(AUTHORS).sort((a,b)=>a.localeCompare(b,'es')).map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join(''); fa.value=ca;
+  const fu=$('#fUso'), cu=fu.value;
+  fu.innerHTML='<option value="">Cualquier uso</option>'+USOLIST.map(u=>`<option value="${esc(u)}">${esc(u)}</option>`).join(''); fu.value=cu;
+  const rt=$('#rTheme'), cr=rt.value; rt.innerHTML='<option value="">Todos los temas</option>'+TK.map(k=>`<option value="${k}">${esc(THEMES[k])}</option>`).join(''); rt.value=cr;
+}
+
+/* ---- búsqueda ---- */
+function match(q){
+  if(!S.cats[q.b.c]) return false;
+  if(S.book && q.b.i!==S.book) return false;
+  if(S.theme && !themesOf(q).includes(S.theme)) return false;
+  if(S.author && !q.b.authors.includes(S.author)) return false;
+  if(S.uso && !usoOf(q).includes(S.uso)) return false;
+  if(S.fav && !FAV.has(q.i)) return false;
+  if(S.terms) for(const t of S.terms){ if(!q.fx.includes(t) && !q.fb.includes(t)) return false }
+  return true;
+}
+function highlight(text,terms){
+  if(!terms||!terms.length) return esc(text);
+  const f=fold(text), rng=[];
+  terms.forEach(t=>{if(!t)return;let i=0;while((i=f.indexOf(t,i))>=0){rng.push([i,i+t.length]);i+=t.length}});
+  if(!rng.length) return esc(text);
+  rng.sort((a,b)=>a[0]-b[0]);
+  const m=[];for(const r of rng){const l=m[m.length-1];if(l&&r[0]<=l[1])l[1]=Math.max(l[1],r[1]);else m.push(r.slice())}
+  let o='',p=0;for(const [a,b] of m){o+=esc(text.slice(p,a))+'<mark>'+esc(text.slice(a,b))+'</mark>';p=b}
+  return o+esc(text.slice(p));
+}
+function srcLine(q){
+  const b=q.b, bits=[];
+  if(q.s) bits.push('pos. '+q.s); if(q.g) bits.push('pág. '+q.g); if(q.d) bits.push(q.d);
+  bits.push(q.i);
+  return `<a data-book="${b.i}"><b>${esc(b.t)}</b></a>${b.a!=='—'?(b.authors.length?' · <a data-author="'+esc(b.authors[0])+'">'+esc(b.a)+'</a>':' · '+esc(b.a)):''} · ${esc(bits.join(' · '))}`;
+}
+function cardHTML(q,terms,opt={}){
+  const th=themesOf(q), uso=usoOf(q), fav=FAV.has(q.i);
+  const body=(q.u==='inicio'||q.u==='ambos'?'<span class="el">… </span>':'')+highlight(q.x,terms)+(q.u==='fin'||q.u==='ambos'?'<span class="el"> …</span>':'');
+  return `<article class="card${fav?' fav':''}" data-id="${q.i}">
+  <blockquote class="${opt.hide?'hide':''}">${body}</blockquote>
+  <div class="src ${opt.hide?'hide':''}">${srcLine(q)}</div>
+  <div class="chips">${q.b.c==='fic'?'':th.map(t=>`<button class="chip" data-theme="${t}">${esc(THEMES[t])}</button>`).join('')}${uso.map(u=>`<span class="chip uso">${esc(u)}<i data-unuso="${esc(u)}" title="Quitar">×</i></span>`).join('')}</div>
+  ${(q.n||[]).map(n=>`<div class="note"><b>✎ Mi nota:</b> <i>${esc(n)}</i></div>`).join('')}
+  <div class="actions">
+    <button class="btn star${fav?' on':''}" data-act="fav" title="Favorita">${fav?'★':'☆'}</button>
+    <button class="btn" data-act="copy">Copiar cita</button>
+    <button class="btn" data-act="copytxt">Copiar texto</button>
+    <button class="btn" data-act="uso">+ Uso</button>
+    ${q.b.c==='fic'?'':'<button class="btn" data-act="temas">Temas…</button>'}
+  </div></article>`;
+}
+let CUR=[];
+function render(){
+  const raw=$('#q').value.trim(); S.q=raw;
+  S.terms=raw?fold(raw).split(/\s+/).filter(Boolean):null;
+  CUR=ALL.filter(match);
+  const box=$('#results'); const shown=CUR.slice(0,S.limit);
+  box.innerHTML=shown.length?shown.map(q=>cardHTML(q,S.terms)).join(''):'<div class="empty">No hay citas con esos filtros.</div>';
+  $('#btnMore').style.display=CUR.length>shown.length?'block':'none';
+  $('#btnMore').textContent=`Mostrar más (${CUR.length-shown.length} restantes)`;
+  let m=`<b>${CUR.length}</b> ${CUR.length===1?'cita':'citas'}`;
+  const act=[]; if(S.book)act.push(BOOK[S.book].t); if(S.theme)act.push(THEMES[S.theme]); if(S.author)act.push(S.author); if(S.uso)act.push('uso: '+S.uso); if(S.fav)act.push('★');
+  $('#resMeta').innerHTML=m+(act.length?' · '+esc(act.join(' · ')):'');
+}
+const rerender=()=>{S.limit=40;render()};
+
+/* ---- vistas ---- */
+function show(v){
+  $$('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
+  $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  if(location.hash!=='#'+v) history.replaceState(null,'','#'+v);
+  if(v==='libros')renderLibros(); if(v==='temas')renderTemas(); if(v==='autores')renderAutores(); if(v==='favs')renderFavs(); if(v==='repaso'&&!REV)nextRev();
+  window.scrollTo(0,0);
+}
+function goSearch(patch){
+  Object.assign(S,{book:'',theme:'',author:'',uso:'',fav:false},patch||{});
+  $('#fBook').value=S.book; $('#fTheme').value=S.theme; $('#fAuthor').value=S.author; $('#fUso').value=S.uso; $('#fFav').checked=S.fav;
+  show('buscar'); rerender();
+}
+function renderLibros(){
+  const f=fold($('#qLibros').value.trim());
+  $('#libros').innerHTML=['nf','fic','doc'].map(c=>{
+    const bs=DB.books.filter(b=>b.c===c&&(!f||fold(b.t+' '+b.a).includes(f))); if(!bs.length)return '';
+    return `<h2 class="sec">${CAT[c]} (${bs.length})</h2><div class="grid">`+bs.map(b=>`<div class="tile" data-book="${b.i}"><div class="t">${esc(b.t)}</div><div class="s">${b.a!=='—'?esc(b.a)+' · ':''}${b.n} ${b.n===1?'cita':'citas'}${c!=='fic'?' · '+esc(b.mainName):''}</div></div>`).join('')+'</div>';
+  }).join('')||'<div class="empty">Sin resultados.</div>';
+}
+function renderTemas(){
+  const cnt={}; ALL.forEach(q=>themesOf(q).forEach(t=>cnt[t]=(cnt[t]||0)+1));
+  $('#temas').innerHTML=TK.map(k=>`<div class="tile" data-theme="${k}"><div class="t">${esc(THEMES[k])}</div><div class="s">${cnt[k]||0} citas</div></div>`).join('');
+}
+function renderAutores(){
+  const f=fold($('#qAutores').value.trim());
+  const names=Object.keys(AUTHORS).filter(a=>!f||fold(a).includes(f)).sort((a,b)=>a.localeCompare(b,'es'));
+  $('#autores').innerHTML=names.map(a=>{const n=AUTHORS[a].reduce((s,b)=>s+b.n,0);return `<div class="tile" data-author="${esc(a)}"><div class="t">${esc(a)}</div><div class="s">${AUTHORS[a].length} ${AUTHORS[a].length===1?'libro':'libros'} · ${n} citas</div></div>`}).join('')||'<div class="empty">Sin resultados.</div>';
+}
+function renderFavs(){
+  const l=ALL.filter(q=>FAV.has(q.i));
+  $('#favCount').textContent=l.length+(l.length===1?' favorita':' favoritas');
+  $('#favList').innerHTML=l.length?l.map(q=>cardHTML(q)).join(''):'<div class="empty">Todavía no marcaste ninguna. Usá ☆ en cualquier cita.</div>';
+}
+let REV=null;
+function nextRev(){
+  const t=$('#rTheme').value, fv=$('#rFav').checked;
+  const pool=ALL.filter(q=>(!t||themesOf(q).includes(t))&&(!fv||FAV.has(q.i)));
+  if(!pool.length){$('#revCard').innerHTML='<div class="empty">No hay citas con ese filtro.</div>';REV=null;return}
+  REV=pool[Math.floor(Math.random()*pool.length)];
+  $('#revCard').innerHTML=cardHTML(REV,null,{hide:$('#rGuess').checked});
+}
+
+/* ---- acciones ---- */
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),1600)}
+function copy(txt){
+  const ok=()=>toast('Copiado');
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt).then(ok,()=>fb())}else fb();
+  function fb(){const a=document.createElement('textarea');a.value=txt;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){toast('No se pudo copiar')}a.remove()}
+}
+function fmtQuote(q,mode){
+  const b=q.b; let t=q.x.trim();
+  if(q.u==='inicio'||q.u==='ambos') t='[…] '+t; if(q.u==='fin'||q.u==='ambos') t+=' […]';
+  if(mode==='txt') return t;
+  const loc=q.g?'pág. '+q.g:(q.s?'pos. '+q.s:'');
+  const ref=[b.a!=='—'?b.a:null,b.t,loc||null].filter(Boolean).join(', ');
+  if(mode==='md') return '> '+t.replace(/\n/g,'\n> ')+'\n>\n> — '+(b.a!=='—'?b.a+', ':'')+'*'+b.t+'*'+(loc?', '+loc:'');
+  return '“'+t+'” ('+ref+')';
+}
+const byId=id=>ALL.find(q=>q.i===id);
+function saveMarks(){LS.set('fav',Array.from(FAV));LS.set('uso',USO);LS.set('usolist',USOLIST);LS.set('temas',TEMAS)}
+function toggleFav(q){FAV.has(q.i)?FAV.delete(q.i):FAV.add(q.i);saveMarks()}
+function popup(anchor,html){
+  closePop();const p=document.createElement('div');p.className='pop';p.id='pop';p.innerHTML=html;document.body.appendChild(p);
+  const r=anchor.getBoundingClientRect();p.style.left=Math.max(8,Math.min(r.left,window.innerWidth-p.offsetWidth-8))+'px';
+  p.style.top=Math.min(r.bottom+6,window.innerHeight-p.offsetHeight-8)+'px';return p;
+}
+function closePop(){const p=$('#pop');if(p)p.remove()}
+function refreshCard(id){
+  const q=byId(id), el=document.querySelector(`.card[data-id="${id}"]`); if(!el)return;
+  const hide=el.closest('#v-repaso')&&$('#rGuess').checked&&el.querySelector('.hide');
+  const tmp=document.createElement('div');tmp.innerHTML=cardHTML(q,S.terms,{hide:!!hide});el.replaceWith(tmp.firstElementChild);
+}
+function actUso(q,btn){
+  const p=popup(btn,'<div><b>Etiqueta de uso</b></div>'+USOLIST.map(u=>`<label><input type="checkbox" value="${esc(u)}" ${usoOf(q).includes(u)?'checked':''}> ${esc(u)}</label>`).join('')+'<div class="row"><button class="btn" id="pNew">+ Nueva…</button><button class="btn pri" id="pOk">Listo</button></div>');
+  $('#pNew').onclick=()=>{const n=(prompt('Nombre de la nueva etiqueta de uso:')||'').trim();if(!n)return;if(!USOLIST.includes(n))USOLIST.push(n);USO[q.i]=Array.from(new Set((USO[q.i]||[]).concat(n)));saveMarks();fillSelects();closePop();refreshCard(q.i)};
+  $('#pOk').onclick=()=>{const v=Array.from(p.querySelectorAll('input:checked')).map(x=>x.value);if(v.length)USO[q.i]=v;else delete USO[q.i];saveMarks();closePop();refreshCard(q.i)};
+}
+function actTemas(q,btn){
+  const cur=themesOf(q);
+  const p=popup(btn,'<div><b>Temas de esta cita</b></div>'+TK.filter(k=>k!=='fic').map(k=>`<label><input type="checkbox" value="${k}" ${cur.includes(k)?'checked':''}> ${esc(THEMES[k])}</label>`).join('')+'<div class="row"><button class="btn" id="pReset">Restaurar</button><button class="btn pri" id="pOk">Listo</button></div>');
+  $('#pReset').onclick=()=>{delete TEMAS[q.i];saveMarks();fillSelects();closePop();refreshCard(q.i)};
+  $('#pOk').onclick=()=>{const v=Array.from(p.querySelectorAll('input:checked')).map(x=>x.value);if(v.length)TEMAS[q.i]=v;saveMarks();fillSelects();closePop();refreshCard(q.i)};
+}
+document.addEventListener('click',e=>{
+  const t=e.target;
+  if(!t.closest('.pop')&&!t.closest('[data-act="uso"],[data-act="temas"],#btnData'))closePop();
+  const card=t.closest('.card'), act=t.dataset&&t.dataset.act;
+  if(act&&card){const q=byId(card.dataset.id);
+    if(act==='fav'){toggleFav(q);refreshCard(q.i);if($('#v-favs').classList.contains('on'))renderFavs()}
+    else if(act==='copy')copy(fmtQuote(q,FMT)); else if(act==='copytxt')copy(fmtQuote(q,'txt'));
+    else if(act==='uso')actUso(q,t); else if(act==='temas')actTemas(q,t);
+    return}
+  if(t.dataset.unuso&&card){const q=byId(card.dataset.id);USO[q.i]=usoOf(q).filter(x=>x!==t.dataset.unuso);if(!USO[q.i].length)delete USO[q.i];saveMarks();refreshCard(q.i);return}
+  const b=t.closest('[data-book]'), th=t.closest('[data-theme]'), au=t.closest('[data-author]');
+  if(b&&!t.closest('#nav')){goSearch({book:b.dataset.book});return}
+  if(th){goSearch({theme:th.dataset.theme});return}
+  if(au){goSearch({author:au.dataset.author});return}
+});
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)});
+$('#q').addEventListener('input',rerender);
+['fBook','fTheme','fAuthor','fUso'].forEach(id=>$('#'+id).addEventListener('change',e=>{S[{fBook:'book',fTheme:'theme',fAuthor:'author',fUso:'uso'}[id]]=e.target.value;rerender()}));
+$('#fFav').addEventListener('change',e=>{S.fav=e.target.checked;rerender()});
+$$('[data-cat]').forEach(c=>c.addEventListener('change',e=>{S.cats[c.dataset.cat]=c.checked;rerender()}));
+$('#fFmt').value=FMT; $('#fFmt').addEventListener('change',e=>{FMT=e.target.value;LS.set('fmt',FMT)});
+$('#btnMore').addEventListener('click',()=>{S.limit+=40;render()});
+$('#btnClear').addEventListener('click',()=>{$('#q').value='';S.cats={nf:true,fic:true,doc:true};$$('[data-cat]').forEach(c=>c.checked=true);goSearch({})});
+$('#qLibros').addEventListener('input',renderLibros); $('#qAutores').addEventListener('input',renderAutores);
+$('#btnCopyFavs').addEventListener('click',()=>{const l=ALL.filter(q=>FAV.has(q.i));if(!l.length){toast('No hay favoritas');return}copy(l.map(q=>fmtQuote(q,FMT)).join('\n\n'))});
+$('#btnNext').addEventListener('click',nextRev); $('#rTheme').addEventListener('change',nextRev); $('#rFav').addEventListener('change',nextRev);
+$('#rGuess').addEventListener('change',()=>{if(REV)$('#revCard').innerHTML=cardHTML(REV,null,{hide:$('#rGuess').checked})});
+$('#revCard').addEventListener('click',e=>{const h=e.target.closest('.hide');if(h&&!e.target.closest('.actions')){$$('#revCard .hide').forEach(x=>x.classList.remove('hide'))}},true);
+document.addEventListener('keydown',e=>{
+  const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if(e.key==='/'&&!typing){e.preventDefault();show('buscar');$('#q').focus()}
+  if(e.key==='Escape'){closePop();if(document.activeElement===$('#q')||$('#q').value){$('#q').value='';rerender()}}
+});
+/* tema claro/oscuro */
+$('#btnTheme').addEventListener('click',()=>{const r=document.documentElement,c=LS.get('theme','auto'),n=c==='auto'?'dark':c==='dark'?'light':'auto';LS.set('theme',n);applyTheme()});
+function applyTheme(){const c=LS.get('theme','auto');if(c==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',c);$('#btnTheme').textContent='◐ '+({auto:'Auto',dark:'Oscuro',light:'Claro'})[c]}
+/* datos: exportar / importar */
+$('#btnData').addEventListener('click',e=>{
+  const p=popup(e.currentTarget,`<div><b>Mis datos</b></div><p style="font-size:.85rem;margin:6px 0">Favoritas: ${FAV.size} · citas con uso: ${Object.keys(USO).length} · temas editados: ${Object.keys(TEMAS).length}</p><div class="row"><button class="btn pri" id="dExp">Exportar</button><button class="btn" id="dImp">Importar…</button></div><input type="file" id="dFile" accept="application/json" style="display:none">`);
+  $('#dExp').onclick=()=>{const blob=new Blob([JSON.stringify({version:1,fav:Array.from(FAV),uso:USO,usolist:USOLIST,temas:TEMAS},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='subrayados-mis-datos.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);closePop()};
+  $('#dImp').onclick=()=>$('#dFile').click();
+  $('#dFile').onchange=ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
+    if(!confirm('Esto reemplaza tus favoritas, usos y temas editados actuales. ¿Continuar?'))return;
+    FAV=new Set(d.fav||[]);USO=d.uso||{};USOLIST=d.usolist||USOLIST;TEMAS=d.temas||{};saveMarks();fillSelects();closePop();rerender();toast('Datos importados')}catch(x){toast('Archivo inválido')}};r.readAsText(f)};
+});
+/* arranque */
+applyTheme(); fillSelects(); render();
+const h=location.hash.slice(1); if(h&&$('#v-'+h)) show(h);
+window.__subr={ALL,S,render,goSearch,fmtQuote,fold,show};
+})();
+</script>
+</body>
+</html>
