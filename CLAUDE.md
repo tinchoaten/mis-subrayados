@@ -9,6 +9,10 @@ Hablale en español rioplatense (voseo). Sé breve.
 1. Corré `git pull`. Juan trabaja desde dos PCs y el repo es el punto de encuentro: sin esto, `registro.json` y `data.js` pueden quedar desactualizados y se pisan los cambios.
 2. Al terminar, commit y push (con el OK de Juan: el repo y el sitio son públicos).
 
+## Sincronización (Cloudflare)
+
+El sitio sincroniza las marcas de Juan con un Worker propio (`sync/worker.js`, en su cuenta de Cloudflare). La clave de sincronización vive en `sync-clave.txt` (ignorado por git). **Nunca la imprimas ni la subas.** Para leer lo pendiente: `node actualizacion/leer-nube.js`.
+
 ## Si Juan trae citas nuevas
 
 Seguí al pie de la letra **`actualizacion/INSTRUCCIONES.md`**. Cubre dos entradas:

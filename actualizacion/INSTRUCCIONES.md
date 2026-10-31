@@ -52,6 +52,19 @@ En el sitio, *Más → Borrar esta cita* oculta una cita **solo en el navegador 
 - No toques `registro.json` por esto: las entradas de Kindle ya están marcadas como vistas, así que no vuelven a proponerse.
 - Cuando el sitio se actualice, esas citas dejan de existir y el navegador de Juan limpia solo la lista de ocultas.
 
+## Sincronización automática (nube)
+
+Desde que está conectada la sincronización, Juan **no necesita exportar nada**: lo que carga o borra en el celu y en las compus queda en un servicio propio (Cloudflare Worker `subrayados-sync`, código en `sync/worker.js`). Para consolidar, leé la nube en vez de pedirle el archivo:
+
+```
+node actualizacion/leer-nube.js > nube.json
+```
+
+El resultado tiene el mismo formato que el archivo exportado (`mias`, `ocultas`, `fav`, `uso`, `temas`), así que se aplican las mismas reglas de las dos secciones anteriores ("Citas cargadas a mano desde el celu" y "Citas que Juan borró desde el sitio"). La clave se lee de `sync-clave.txt` (no se sube al repo) o de la variable `SYNC_KEY`. Si falta en la PC donde trabajás, pedísela a Juan o usá el archivo exportado como antes.
+
+- Después de consolidar, no hace falta limpiar la nube: los dispositivos ignoran los borrados de citas que ya no existen y ocultan solos las citas agregadas que ya están en `data.js`.
+- Nunca imprimas ni copies la clave en mensajes, commits ni archivos que se suban.
+
 ## Flujo (seguilo en este orden)
 
 1. **Pedí el archivo** si Juan no lo pasó. Ruta habitual: `C:\Users\tinch\Downloads\My Clippings.txt`. Preguntale también si tiene citas cargadas desde el celu (`subrayados-mis-datos.json`).

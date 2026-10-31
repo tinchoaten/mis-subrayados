@@ -53,6 +53,7 @@ Los códigos de las citas (por ejemplo `PC-12`) se mantienen y coinciden con el 
 - **Dirección (URL)**: la búsqueda y los filtros quedan en la dirección. Podés marcarla como favorita y el botón *atrás* funciona.
 - **Agregar citas a mano** (botón *+ Agregar*): libro en papel, artículo, lo que sea. Elegís el libro de tu lista o escribís uno nuevo, pegás o escribís la cita (en iPhone podés escanear la página con la cámara desde el teclado) y listo. Quedan en tu navegador, se ven en la búsqueda con la marca "Agregada desde el celu" y se pueden editar o borrar. Se respaldan con *Mis datos → Exportar* y, cuando se pasan al archivo, desaparecen solas de esa lista.
 - **Borrar una cita**: en *Más → Borrar esta cita* (dos toques). Se oculta en tu navegador y la podés restaurar desde *Mis datos → Ver y restaurar*. Para sacarla del sitio publicado, exportá y pasale el archivo a Claude.
+- **Sincronización entre dispositivos**: en *Mis datos → Sincronización* pegás tu clave (o abrís el enlace de conexión) y favoritas, etiquetas, citas agregadas y borradas se comparten solas entre el celu y las compus. Si no hay conexión, todo sigue funcionando y se sincroniza al volver.
 - **Orden**: por defecto como en el libro; también por fecha de lectura (más recientes primero) o por título.
 - **Enlace a una cita**: en *Más → Copiar enlace a esta cita*.
 - **Favoritas**: *Copiar todas* o *Descargar* (`.md` o `.txt`, según el formato elegido).

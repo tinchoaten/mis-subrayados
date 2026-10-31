@@ -28,6 +28,15 @@ function saveOcultas() { LS.set('ocultas', OCULTAS); }
 var MIAS = LS.get('mias', []);           // citas cargadas a mano desde el celu (pendientes de pasar a data.js)
 var LASTBOOK = LS.get('lastbook', { t: '', a: '' });
 function saveMias() { LS.set('mias', MIAS); }
+
+/* sincronización: cada marca lleva su hora de última modificación (TS) y gana la más nueva */
+var SYNC_URL = LS.get('syncurl', 'https://subrayados-sync.juanmartinatencio.workers.dev/sync');   // 'syncurl' solo se usa para pruebas
+var SYNC = { key: LS.get('synckey', ''), busy: false, dirty: false, last: LS.get('lastsync', 0), err: '' };
+var TS = LS.get('ts', {});
+var syncT;
+function saveTS() { LS.set('ts', TS); }
+function touch(key) { TS[key] = Date.now(); saveTS(); scheduleSync(); }
+function scheduleSync() { if (!SYNC.key) return; clearTimeout(syncT); syncT = setTimeout(doSync, 2500); }
 function saveMarks() { LS.set('fav', Array.from(FAV)); LS.set('uso', USO); LS.set('usolist', USOLIST); LS.set('temas', TEMAS); }
 
 /* ---------- datos derivados ---------- */
@@ -106,6 +115,7 @@ function findDup(text) {
   return null;
 }
 function migrateMarks(from, to) {
+  touch('fav:' + from); touch('fav:' + to); touch('uso:' + from); touch('uso:' + to); touch('temas:' + from); touch('temas:' + to);
   if (FAV.has(from)) { FAV.delete(from); FAV.add(to); }
   if (USO[from]) { var u = (USO[to] || []).concat(USO[from]); USO[to] = u.filter(function (x, k) { return u.indexOf(x) === k; }); delete USO[from]; }
   if (TEMAS[from]) { if (!TEMAS[to]) TEMAS[to] = TEMAS[from]; delete TEMAS[from]; }
@@ -129,7 +139,7 @@ function removeMia(id, keepMarks) {
   var kept = [], changed = false;
   MIAS.forEach(function (m) {
     var d = findDup(m.x);
-    if (d) { migrateMarks(m.id, d.i); changed = true; } else kept.push(m);
+    if (d) { migrateMarks(m.id, d.i); touch('mia:' + m.id); changed = true; } else kept.push(m);
   });
   MIAS = kept;
   if (changed) { saveMias(); saveMarks(); }
@@ -466,7 +476,7 @@ function saveForm(again) {
     if (old) { rec.d = old.d; rec.iso = old.iso; }
     removeMia(editId, true);
   }
-  MIAS.push(rec); saveMias(); indexMia(rec); refreshAuthors(); fillFilters(); updateDataStats();
+  MIAS.push(rec); saveMias(); touch('mia:' + rec.id); indexMia(rec); refreshAuthors(); fillFilters(); updateDataStats();
   LASTBOOK = { t: rec.t, a: rec.a }; LS.set('lastbook', LASTBOOK);
   if (again) {
     $('#aX').value = ''; $('#aG').value = ''; $('#aN').value = ''; err.textContent = '';
@@ -546,6 +556,7 @@ function updateDataStats() {
   $('#dataStats').textContent = 'Favoritas: ' + FAV.size + ' · citas con etiqueta de uso: ' + Object.keys(USO).length + ' · citas con temas corregidos: ' + Object.keys(TEMAS).length + ' · citas agregadas desde el celu: ' + MIAS.length;
   var nb = OCULTAS.length;
   $('#dataDel').innerHTML = nb ? 'Citas borradas en este navegador: ' + nb + ' · <a href="#/buscar?borradas=1">Ver y restaurar</a>' : '';
+  renderSync();
 }
 function applyUITheme() {
   var r = document.documentElement;
@@ -580,7 +591,7 @@ function cardOf(el) { var c = el.closest('.q'); return c ? { el: c, q: BYID[c.da
 function doFav(c) {
   var q = c.q, b = c.el.querySelector('.fav');
   if (FAV.has(q.i)) FAV.delete(q.i); else FAV.add(q.i);
-  saveMarks();
+  saveMarks(); touch('fav:' + q.i);
   var on = FAV.has(q.i);
   b.setAttribute('aria-pressed', on); b.textContent = on ? '★' : '☆';
   toast(on ? 'Marcada como favorita' : 'Quitada de favoritas');
@@ -616,7 +627,7 @@ view.addEventListener('click', function (e) {
   else if (act === 'more' && c) doMore(c);
   else if (act === 'reveal' && c) { revealed[c.q.i] = true; c.el.outerHTML = cardHTML(c.q, [], {}); }
   else if (act === 'resettemas' && c) {
-    delete TEMAS[c.q.i]; saveMarks();
+    delete TEMAS[c.q.i]; saveMarks(); touch('temas:' + c.q.i);
     var th = themesOf(c.q);
     Array.prototype.forEach.call(c.el.querySelectorAll('input[data-k="tema"]'), function (i) { i.checked = th.indexOf(i.value) > -1; });
     t.disabled = true; refreshMeta(c); fillFilters(); syncControls(); updateDataStats();
@@ -642,6 +653,7 @@ view.addEventListener('click', function (e) {
   else if (act === 'delmia' && c) {
     if (t.dataset.sure) {
       var qq = c.q; if (qq.mia) removeMia(qq.i); else hideQuote(qq); fillFilters(); updateDataStats();
+      if (qq.mia) { touch('mia:' + qq.i); touch('fav:' + qq.i); touch('uso:' + qq.i); touch('temas:' + qq.i); } else touch('oculta:' + qq.i);
       var ix = L.items.indexOf(qq); if (ix > -1) { L.items.splice(ix, 1); L.shown = Math.max(0, L.shown - 1); }
       c.el.remove(); toast(qq.mia ? 'Cita borrada' : 'Cita borrada. Podés restaurarla desde Mis datos');
     } else {
@@ -650,7 +662,7 @@ view.addEventListener('click', function (e) {
     }
   }
   else if (act === 'restore' && c) {
-    var rq = c.q; restoreQuote(rq); fillFilters(); updateDataStats();
+    var rq = c.q; restoreQuote(rq); touch('oculta:' + rq.i); fillFilters(); updateDataStats();
     var rx = L.items.indexOf(rq); if (rx > -1) { L.items.splice(rx, 1); L.shown = Math.max(0, L.shown - 1); }
     c.el.remove(); toast('Cita restaurada');
   }
@@ -674,6 +686,7 @@ view.addEventListener('change', function (e) {
     if (sameSet(sel, c.q.h || [])) delete TEMAS[c.q.i]; else TEMAS[c.q.i] = sel;
     var rb = c.el.querySelector('[data-act="resettemas"]'); if (rb) rb.disabled = !TEMAS[c.q.i];
   }
+  touch((t.dataset.k === 'uso' ? 'uso:' : 'temas:') + c.q.i);
   saveMarks(); refreshMeta(c); fillFilters(); syncControls(); updateDataStats();
 });
 view.addEventListener('input', function (e) { if (e.target.id === 'aT') syncBookField(); });
@@ -685,7 +698,7 @@ view.addEventListener('submit', function (e) {
   var c = cardOf(e.target), inp = e.target.querySelector('input'), name = inp.value.trim();
   if (!name || !c) return;
   if (USOLIST.indexOf(name) < 0) USOLIST.push(name);
-  setUso(c.q, name, true); saveMarks(); fillFilters(); syncControls(); refreshMeta(c);
+  setUso(c.q, name, true); saveMarks(); touch('uso:' + c.q.i); touch('usolist'); fillFilters(); syncControls(); refreshMeta(c);
   var panel = c.el.querySelector('.more'); if (panel) panel.remove();
   c.el.insertAdjacentHTML('beforeend', morePanel(c.q));
   toast('Etiqueta agregada');
@@ -777,7 +790,7 @@ $('#fileImport').addEventListener('change', function (e) {
       });
       (d.ocultas || []).forEach(function (id) { var q = BYID[id]; if (q && !q.mia && !q.del) hideQuote(q); });
       saveMias(); refreshAuthors();
-      saveMarks(); fillFilters(); route(false); updateDataStats();
+      touchAll(); saveMarks(); fillFilters(); route(false); updateDataStats();
       toast('Importado: se sumó a lo que ya tenías');
     } catch (x) { toast('El archivo no es válido'); }
     e.target.value = '';
@@ -821,6 +834,126 @@ document.addEventListener('keydown', function (e) {
   }
 });
 
+/* ---------- sincronización entre dispositivos ---------- */
+function localEntry(k) {
+  var i = k.indexOf(':'), kind = i < 0 ? k : k.slice(0, i), id = k.slice(i + 1);
+  if (kind === 'fav') return FAV.has(id);
+  if (kind === 'uso') return USO[id] || [];
+  if (kind === 'temas') return TEMAS[id] || null;
+  if (kind === 'usolist') return USOLIST;
+  if (kind === 'mia') return MIAS.filter(function (m) { return m.id === id; })[0] || null;
+  if (kind === 'oculta') return OCULTAS.indexOf(id) > -1;
+  return null;
+}
+function localEntries() {
+  var o = {};
+  Object.keys(TS).forEach(function (k) { o[k] = { v: localEntry(k), t: TS[k] }; });
+  return o;
+}
+function allMarkKeys() {
+  var ks = ['usolist'];
+  FAV.forEach(function (id) { ks.push('fav:' + id); });
+  Object.keys(USO).forEach(function (id) { ks.push('uso:' + id); });
+  Object.keys(TEMAS).forEach(function (id) { ks.push('temas:' + id); });
+  MIAS.forEach(function (m) { ks.push('mia:' + m.id); });
+  OCULTAS.forEach(function (id) { ks.push('oculta:' + id); });
+  return ks;
+}
+function touchAll() { var t = Date.now(); allMarkKeys().forEach(function (k) { TS[k] = t; }); saveTS(); scheduleSync(); }
+function applyRemote(entries) {
+  var changed = false;
+  Object.keys(entries).forEach(function (k) {
+    var e = entries[k];
+    if (!e || typeof e.t !== 'number' || e.t <= (TS[k] || 0)) return;
+    TS[k] = e.t; changed = true;
+    var i = k.indexOf(':'), kind = i < 0 ? k : k.slice(0, i), id = k.slice(i + 1), v = e.v;
+    if (kind === 'fav') { if (v) FAV.add(id); else FAV.delete(id); }
+    else if (kind === 'uso') { if (v && v.length) USO[id] = v; else delete USO[id]; }
+    else if (kind === 'temas') { if (v) TEMAS[id] = v; else delete TEMAS[id]; }
+    else if (kind === 'usolist') { if (v && v.length) USOLIST = v; }
+    else if (kind === 'oculta') {
+      var q = BYID[id];
+      if (q && !q.mia) { if (v && !q.del) hideQuote(q); else if (!v && q.del) restoreQuote(q); }
+    }
+    else if (kind === 'mia') {
+      var cur = BYID[id], mine = MIAS.filter(function (m) { return m.id === id; })[0];
+      if (!v) { if (cur && cur.mia) removeMia(id, true); }
+      else if (!mine || JSON.stringify(mine) !== JSON.stringify(v)) {
+        if (mine) removeMia(id, true);
+        var dup = findDup(v.x);
+        if (dup) { migrateMarks(id, dup.i); touch('mia:' + id); } else { MIAS.push(v); indexMia(v); }
+      }
+    }
+  });
+  if (changed) { saveTS(); saveMarks(); saveMias(); refreshAuthors(); }
+  return changed;
+}
+function ago(ms) {
+  var s = Math.round((Date.now() - ms) / 1000);
+  return s < 60 ? 'hace un momento' : s < 3600 ? 'hace ' + Math.round(s / 60) + ' min' : s < 86400 ? 'hace ' + Math.round(s / 3600) + ' h' : 'hace ' + Math.round(s / 86400) + ' días';
+}
+function renderSync() {
+  var box = $('#syncBox'); if (!box) return;
+  if (!SYNC.key) {
+    box.innerHTML = '<h3>Sincronización</h3><p class="muted">Pegá tu clave para que favoritas, citas agregadas y borradas se compartan entre tus dispositivos.</p>' +
+      '<div class="row"><input id="syKey" type="password" autocomplete="off" placeholder="Clave de sincronización" aria-label="Clave de sincronización"><button class="btn pri" data-sy="conectar">Conectar</button></div>' +
+      (SYNC.err ? '<p class="err">' + esc(SYNC.err) + '</p>' : '');
+  } else {
+    box.innerHTML = '<h3>Sincronización</h3><p id="syMsg">' + (SYNC.busy ? 'Sincronizando…' : SYNC.err ? esc(SYNC.err) : 'Conectada · ' + (SYNC.last ? 'última vez ' + ago(SYNC.last) : 'todavía sin sincronizar')) + '</p>' +
+      '<div class="row"><button class="btn" data-sy="ahora">Sincronizar ahora</button><button class="btn" data-sy="salir">Desconectar</button></div>';
+  }
+}
+function syncFetch(entries) {
+  return fetch(SYNC_URL, { method: 'POST', headers: { 'authorization': 'Bearer ' + SYNC.key, 'content-type': 'application/json' }, body: JSON.stringify({ entries: entries }) })
+    .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); });
+}
+function syncError(e) { return e && e.message === '401' ? 'La clave no es válida' : 'No se pudo sincronizar (sin conexión o el servicio no responde)'; }
+function refreshAfterSync() {
+  fillFilters(); updateDataStats(); syncControls();
+  var a = document.activeElement, busy = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+  if (S.v === 'agregar' || busy) return;
+  positions[location.hash] = { y: window.scrollY, n: L.shown }; route(true);
+}
+function doSync(manual) {
+  if (!SYNC.key) return;
+  if (SYNC.busy) { SYNC.dirty = true; return; }
+  if (navigator.onLine === false) { SYNC.err = 'Sin conexión'; renderSync(); return; }
+  SYNC.busy = true; SYNC.err = ''; renderSync();
+  syncFetch(localEntries()).then(function (d) {
+    var ch = applyRemote(d.entries || {});
+    SYNC.last = Date.now(); LS.set('lastsync', SYNC.last);
+    if (ch) refreshAfterSync();
+    if (manual === true) toast(ch ? 'Sincronizado: había cambios nuevos' : 'Todo al día');
+  }).catch(function (e) {
+    SYNC.err = syncError(e); if (manual === true) toast(SYNC.err);
+  }).then(function () {
+    SYNC.busy = false; renderSync();
+    if (SYNC.dirty) { SYNC.dirty = false; scheduleSync(); }
+  });
+}
+function connectSync(key) {
+  SYNC.key = key; LS.set('synckey', key); SYNC.busy = true; SYNC.err = ''; renderSync();
+  syncFetch({}).then(function (d) {
+    var remote = d.entries || {}, t = Date.now();
+    allMarkKeys().forEach(function (k) { if (!(k in remote) && !(k in TS)) TS[k] = t; });
+    saveTS();
+    var ch = applyRemote(remote);
+    SYNC.last = Date.now(); LS.set('lastsync', SYNC.last); SYNC.busy = false;
+    if (ch) refreshAfterSync();
+    toast('Sincronización conectada'); renderSync(); doSync();
+  }).catch(function (e) {
+    SYNC.busy = false; SYNC.key = ''; LS.set('synckey', ''); SYNC.err = e && e.message === '401' ? 'La clave no es válida' : 'No se pudo conectar'; toast(SYNC.err); renderSync();
+  });
+}
+$('#syncBox').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-sy]'); if (!b) return;
+  if (b.dataset.sy === 'conectar') { var v = ($('#syKey').value || '').trim(); if (v.length >= 24) connectSync(v); else toast('Pegá la clave completa'); }
+  else if (b.dataset.sy === 'ahora') doSync(true);
+  else if (b.dataset.sy === 'salir') { SYNC.key = ''; LS.set('synckey', ''); renderSync(); toast('Sincronización desconectada'); }
+});
+document.addEventListener('visibilitychange', function () { if (!document.hidden) doSync(); });
+window.addEventListener('online', function () { doSync(); });
+
 /* ---------- arranque ---------- */
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
@@ -830,6 +963,12 @@ applyUITheme();
 fillFilters();
 updateDataStats();
 history.scrollRestoration = 'manual';
+(function () {   // enlace de conexión: #/conectar?k=CLAVE
+  var m = /^#\/conectar\?k=([\w-]{24,})/.exec(location.hash);
+  if (m) { history.replaceState(null, '', location.href.split('#')[0] + '#/buscar'); setTimeout(function () { connectSync(m[1]); }, 300); }
+})();
 route(false);
+renderSync();
+if (SYNC.key) setTimeout(doSync, 600);
 
 })();

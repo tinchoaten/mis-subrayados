@@ -196,3 +196,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .bar-end .btn { padding: 0 9px; font-size: .85rem; }
 .bar-end .btn.pri { padding: 0 12px; margin-right: 2px; }
 @media (max-width: 360px) { .brand { font-size: .9rem; } }
+
+/* sincronización */
+.syncbox { margin: 12px 0; padding: 4px 0 10px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.syncbox h3 { margin: 10px 0 4px; font: 600 .78rem var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.syncbox p { margin: 4px 0; }
+.syncbox input { flex: 1; min-width: 0; min-height: 44px; font: .92rem var(--sans); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; }
+.syncbox .err { color: var(--accent); }
