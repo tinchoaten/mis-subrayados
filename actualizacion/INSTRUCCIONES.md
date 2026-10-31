@@ -42,6 +42,16 @@ Juan puede agregar citas desde el sitio (botón **+ Agregar**): libros en papel,
 - Los demás datos del archivo (`fav`, `uso`, `temas`) son marcas personales: no los toques.
 - Las citas pendientes no existen en el `My Clippings.txt`, así que no pasan por `nuevas.js` ni por `registro.json`.
 
+## Citas que Juan borró desde el sitio
+
+En el sitio, *Más → Borrar esta cita* oculta una cita **solo en el navegador de Juan** (se puede restaurar desde *Mis datos → Ver y restaurar*). Para sacarla del sitio publicado, Juan te pasa el archivo exportado `subrayados-mis-datos.json`: la lista **`ocultas`** tiene los códigos (por ejemplo `["BN-01", "CW-12"]`).
+
+- Es el **único caso en que podés borrar** citas de `data.js`, y solo porque Juan lo pidió al exportar. Antes de borrar, **mostrale la lista** (código, libro y primeras palabras) y esperá su confirmación.
+- Al borrar: sacá la cita de `q`, actualizá `n` del libro y **no renumeres ni reutilices el código**. Si un libro se queda sin citas, preguntale si lo quitás también.
+- Los códigos que ya no existan en `data.js` ignoralos sin avisar.
+- No toques `registro.json` por esto: las entradas de Kindle ya están marcadas como vistas, así que no vuelven a proponerse.
+- Cuando el sitio se actualice, esas citas dejan de existir y el navegador de Juan limpia solo la lista de ocultas.
+
 ## Flujo (seguilo en este orden)
 
 1. **Pedí el archivo** si Juan no lo pasó. Ruta habitual: `C:\Users\tinch\Downloads\My Clippings.txt`. Preguntale también si tiene citas cargadas desde el celu (`subrayados-mis-datos.json`).
@@ -122,7 +132,7 @@ Verificá y reportá cada punto:
 
 ## Reglas que no se rompen
 
-- **Solo agregás.** No borres, edites ni renumeres citas existentes, salvo que Juan lo pida explícitamente.
+- **Solo agregás.** No borres, edites ni renumeres citas existentes, salvo que Juan lo pida explícitamente (el único borrado previsto es el de la sección "Citas que Juan borró desde el sitio", con su confirmación).
 - **No reincorporés lo que Juan borró:** si algo ya está en el registro, no vuelve, aunque esté en el archivo.
 - **No inventes** ni completes texto, autores, páginas o fechas. Si falta, dejalo vacío o preguntá.
 - **Antes de publicar, pedí OK.** El repo y el sitio son públicos.

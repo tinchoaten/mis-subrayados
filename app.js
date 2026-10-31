@@ -22,6 +22,9 @@ var USOLIST = LS.get('usolist', ['columna', 'clase', 'artículo', 'charla']);
 var TEMAS = LS.get('temas', {});
 var FMT = LS.get('fmt', 'ref');
 var UITHEME = LS.get('uitema', 'auto');
+var OCULTAS = LS.get('ocultas', []);     // ids de citas borradas en este navegador (se pueden restaurar)
+var HIDDEN = {};
+function saveOcultas() { LS.set('ocultas', OCULTAS); }
 var MIAS = LS.get('mias', []);           // citas cargadas a mano desde el celu (pendientes de pasar a data.js)
 var LASTBOOK = LS.get('lastbook', { t: '', a: '' });
 function saveMias() { LS.set('mias', MIAS); }
@@ -45,7 +48,7 @@ function dateKey(d) {
   var m = /(\d{1,2})\s+([a-záéíóú]+)\.?\s+(\d{4})/i.exec(d || '');
   return m ? (+m[3]) * 10000 + (MESES[fold(m[2]).slice(0, 3)] || 0) * 100 + (+m[1]) : 0;
 }
-var ALL = [], BYID = {}, BOOKS = {}, AUTHORS = {};
+var ALL = [], BYID = {}, BOOKS = {}, AUTHORS = {}, ORD = 0;
 DB.books.forEach(function (b) {
   BOOKS[b.i] = b;
   b.au = b.c === 'doc' ? [] : splitAuthors(b.a);
@@ -54,11 +57,12 @@ DB.books.forEach(function (b) {
     q.b = b;
     q.dk = dateKey(q.d);
     q.fx = fold(q.x + ' ' + (q.n || []).join(' ') + ' ' + b.t + ' ' + b.a + ' ' + q.i);
+    q.ord = ORD++;
     ALL.push(q); BYID[q.i] = q;
   });
 });
 var AUTHNAMES = [];
-function refreshAuthors() { AUTHNAMES = Object.keys(AUTHORS).sort(function (a, b) { return a.localeCompare(b, 'es'); }); }
+function refreshAuthors() { AUTHNAMES = Object.keys(AUTHORS).filter(function (k) { return AUTHORS[k].n > 0; }).sort(function (a, b) { return a.localeCompare(b, 'es'); }); }
 refreshAuthors();
 var MES3 = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 function fold2(s) { return fold(s).replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -87,6 +91,7 @@ function indexMia(m) {
   var q = { i: m.id, x: m.x, g: m.g || '', n: m.n && m.n.length ? m.n : undefined, d: m.d, h: [], mia: true, b: b };
   q.dk = dateKey(q.d); q.f2 = fold2(q.x);
   q.fx = fold(q.x + ' ' + (q.n || []).join(' ') + ' ' + b.t + ' ' + b.a + ' ' + q.i);
+  q.ord = ORD++;
   ALL.push(q); BYID[q.i] = q;
   b.au.forEach(function (n) { AUTHORS[n].n++; });
   return q;
@@ -130,12 +135,34 @@ function removeMia(id, keepMarks) {
   if (changed) { saveMias(); saveMarks(); }
   MIAS.forEach(indexMia); refreshAuthors();
 })();
+
+/* borrar: se oculta en este navegador y se puede restaurar */
+function hideQuote(q) {
+  var i = ALL.indexOf(q); if (i < 0) return;
+  ALL.splice(i, 1);
+  q.b.au.forEach(function (n) { if (AUTHORS[n]) AUTHORS[n].n--; });
+  q.del = true; HIDDEN[q.i] = q;
+  if (OCULTAS.indexOf(q.i) < 0) { OCULTAS.push(q.i); saveOcultas(); }
+  refreshAuthors();
+}
+function restoreQuote(q) {
+  delete HIDDEN[q.i]; q.del = false;
+  ALL.push(q); ALL.sort(function (a, b) { return a.ord - b.ord; });
+  q.b.au.forEach(function (n) { if (AUTHORS[n]) AUTHORS[n].n++; });
+  OCULTAS = OCULTAS.filter(function (x) { return x !== q.i; }); saveOcultas();
+  refreshAuthors();
+}
+(function () {
+  var keep = [];
+  OCULTAS.slice().forEach(function (id) { var q = BYID[id]; if (q && !q.mia) { hideQuote(q); keep.push(id); } });
+  if (keep.length !== OCULTAS.length) { OCULTAS = keep; saveOcultas(); }
+})();
 function themesOf(q) { return TEMAS[q.i] || q.h || []; }
 function usoOf(q) { return USO[q.i] || []; }
 
 /* ---------- estado en la URL ---------- */
 var VIEWS = ['buscar', 'libros', 'temas', 'autores', 'favoritas', 'repaso', 'agregar'];
-var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias', 'ord', 'adivinar', 'c'];
+var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias', 'borradas', 'ord', 'adivinar', 'c'];
 var S = { v: 'buscar', p: {} };
 var positions = {}, curHash = null;
 
@@ -170,7 +197,7 @@ function termsOf(q) {
 function applyFilters(p, useQ, forceFav) {
   var terms = useQ ? termsOf(p.q) : [];
   var fav = forceFav || p.fav;
-  return ALL.filter(function (q) {
+  return (p.borradas ? Object.keys(HIDDEN).map(function (k) { return HIDDEN[k]; }) : ALL).filter(function (q) {
     if (p.cita && q.i !== p.cita) return false;
     if (p.mias && !q.mia) return false;
     if (p.libro && q.b.i !== p.libro) return false;
@@ -287,12 +314,13 @@ function optHTML(kind, val, checked, label) {
 }
 function morePanel(q) {
   var u = usoOf(q), th = themesOf(q);
+  if (q.del) return '<div class="more"><p>Esta cita está borrada en este navegador.</p><p class="row"><button class="btn pri" data-act="restore">Restaurar</button></p></div>';
   return '<div class="more">' +
     '<h3>Para qué la usás</h3><div class="opts">' + USOLIST.map(function (x) { return optHTML('uso', x, u.indexOf(x) > -1); }).join('') + '</div>' +
     '<form class="newuso"><input placeholder="Nueva etiqueta…" aria-label="Nueva etiqueta de uso" maxlength="30"><button class="btn">Agregar</button></form>' +
     '<h3>Temas</h3><div class="opts">' + TK.map(function (k) { return optHTML('tema', k, th.indexOf(k) > -1, THEMES[k]); }).join('') + '</div>' +
     '<p class="row"><button class="btn" data-act="link">Copiar enlace a esta cita</button></p>' +
-    (q.mia ? '<p class="row"><a class="btn" href="#/agregar?c=' + encodeURIComponent(q.i) + '">Editar</a><button class="btn" data-act="delmia">Borrar esta cita</button></p>' : '') +
+    '<p class="row">' + (q.mia ? '<a class="btn" href="#/agregar?c=' + encodeURIComponent(q.i) + '">Editar</a>' : '') + '<button class="btn" data-act="delmia">Borrar esta cita</button></p>' +
     '<p><button class="btn" data-act="resettemas"' + (TEMAS[q.i] ? '' : ' disabled') + '>Volver a los temas originales</button></p></div>';
 }
 
@@ -333,7 +361,7 @@ function setCount(t) { $('#count').textContent = t; }
 function viewBuscar() {
   var items = sortItems(applyFilters(S.p, true), S.p.ord);
   var n = items.length;
-  setCount(hasFilters() ? plural(n, 'resultado', 'resultados') + ' de ' + nf(ALL.length) : plural(n, 'cita', 'citas'));
+  setCount(S.p.borradas ? plural(n, 'cita borrada', 'citas borradas') : hasFilters() ? plural(n, 'resultado', 'resultados') + ' de ' + nf(ALL.length) : plural(n, 'cita', 'citas'));
   showList(items, termsOf(S.p.q));
 }
 function viewFavoritas() {
@@ -351,7 +379,7 @@ function groupBooks(f) {
   var out = '', cb = {};
   ALL.forEach(function (q) { cb[q.b.i] = (cb[q.b.i] || 0) + 1; });
   CATORDER.forEach(function (c) {
-    var bs = DB.books.filter(function (b) { return b.c === c && (!f || fold(b.t + ' ' + b.a).indexOf(f) > -1); })
+    var bs = DB.books.filter(function (b) { return b.c === c && cb[b.i] && (!f || fold(b.t + ' ' + b.a).indexOf(f) > -1); })
       .sort(function (a, b) { return a.t.localeCompare(b.t, 'es'); });
     if (!bs.length) return;
     out += '<h2 class="grp">' + CAT[c] + ' · ' + bs.length + '</h2><ul class="list">' + bs.map(function (b) {
@@ -362,7 +390,7 @@ function groupBooks(f) {
   return out || '<div class="empty"><p>Ningún libro coincide.</p></div>';
 }
 function viewLibros() {
-  setCount(plural(DB.books.length, 'libro', 'libros') + ' · ' + plural(ALL.length, 'cita', 'citas'));
+  setCount(plural(new Set(ALL.map(function (q) { return q.b.i; })).size, 'libro', 'libros') + ' · ' + plural(ALL.length, 'cita', 'citas'));
   view.innerHTML = '<input class="filter-in" id="fl" type="search" placeholder="Filtrar libros por título o autor…" aria-label="Filtrar libros"><div id="fl-out">' + groupBooks('') + '</div>';
   $('#fl').addEventListener('input', function (e) { $('#fl-out').innerHTML = groupBooks(fold(e.target.value.trim())); });
 }
@@ -502,6 +530,7 @@ function syncControls() {
   if (['buscar', 'favoritas', 'repaso'].indexOf(S.v) > -1) {
     if (S.p.cita) chip('cita', 'Una cita: ' + S.p.cita);
     if (S.p.mias) chip('mias', 'Agregadas por mí');
+    if (S.p.borradas) chip('borradas', 'Citas borradas');
     if (S.p.libro && BOOKS[S.p.libro]) chip('libro', BOOKS[S.p.libro].t);
     if (S.p.tema && THEMES[S.p.tema]) chip('tema', THEMES[S.p.tema]);
     if (S.p.autor) chip('autor', S.p.autor);
@@ -515,6 +544,8 @@ function syncControls() {
 }
 function updateDataStats() {
   $('#dataStats').textContent = 'Favoritas: ' + FAV.size + ' · citas con etiqueta de uso: ' + Object.keys(USO).length + ' · citas con temas corregidos: ' + Object.keys(TEMAS).length + ' · citas agregadas desde el celu: ' + MIAS.length;
+  var nb = OCULTAS.length;
+  $('#dataDel').innerHTML = nb ? 'Citas borradas en este navegador: ' + nb + ' · <a href="#/buscar?borradas=1">Ver y restaurar</a>' : '';
 }
 function applyUITheme() {
   var r = document.documentElement;
@@ -610,13 +641,18 @@ view.addEventListener('click', function (e) {
   else if (act === 'saveagain') saveForm(true);
   else if (act === 'delmia' && c) {
     if (t.dataset.sure) {
-      var qq = c.q; removeMia(qq.i); fillFilters(); updateDataStats();
+      var qq = c.q; if (qq.mia) removeMia(qq.i); else hideQuote(qq); fillFilters(); updateDataStats();
       var ix = L.items.indexOf(qq); if (ix > -1) { L.items.splice(ix, 1); L.shown = Math.max(0, L.shown - 1); }
-      c.el.remove(); toast('Cita borrada');
+      c.el.remove(); toast(qq.mia ? 'Cita borrada' : 'Cita borrada. Podés restaurarla desde Mis datos');
     } else {
       t.dataset.sure = '1'; t.textContent = 'Tocá otra vez para borrar';
       setTimeout(function () { if (t.isConnected) { delete t.dataset.sure; t.textContent = 'Borrar esta cita'; } }, 4000);
     }
+  }
+  else if (act === 'restore' && c) {
+    var rq = c.q; restoreQuote(rq); fillFilters(); updateDataStats();
+    var rx = L.items.indexOf(rq); if (rx > -1) { L.items.splice(rx, 1); L.shown = Math.max(0, L.shown - 1); }
+    c.el.remove(); toast('Cita restaurada');
   }
   else if (act === 'moremore') renderMore();
   else if (act === 'next') nextRev();
@@ -659,6 +695,7 @@ document.addEventListener('click', function (e) {
   var a = e.target.closest('a[href^="#/"]');
   if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
     e.preventDefault(); navigate(a.getAttribute('href'), false);
+    if (a.closest('.panel')) { P_F.panel.hidden = P_D.panel.hidden = true; P_F.btn.setAttribute('aria-expanded', 'false'); P_D.btn.setAttribute('aria-expanded', 'false'); }
     if (S.v !== 'agregar') $('#main').focus({ preventScroll: true });
     return;
   }
@@ -701,7 +738,7 @@ $('#btnTheme').addEventListener('click', function () {
 
 /* exportar / importar */
 $('#btnExport').addEventListener('click', function () {
-  var data = { version: 1, fav: Array.from(FAV), uso: USO, usolist: USOLIST, temas: TEMAS, mias: MIAS };
+  var data = { version: 1, fav: Array.from(FAV), uso: USO, usolist: USOLIST, temas: TEMAS, mias: MIAS, ocultas: OCULTAS };
   var json = JSON.stringify(data, null, 1);
   function download() {
     var blob = new Blob([json], { type: 'application/json' });
@@ -738,6 +775,7 @@ $('#fileImport').addEventListener('change', function (e) {
         if (!m || !m.id || !m.x || BYID[m.id] || findDup(m.x)) return;
         MIAS.push(m); indexMia(m);
       });
+      (d.ocultas || []).forEach(function (id) { var q = BYID[id]; if (q && !q.mia && !q.del) hideQuote(q); });
       saveMias(); refreshAuthors();
       saveMarks(); fillFilters(); route(false); updateDataStats();
       toast('Importado: se sumó a lo que ya tenías');
