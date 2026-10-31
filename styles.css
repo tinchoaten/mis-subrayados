@@ -203,3 +203,17 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .syncbox p { margin: 4px 0; }
 .syncbox input { flex: 1; min-width: 0; min-height: 44px; font: .92rem var(--sans); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; }
 .syncbox .err { color: var(--accent); }
+
+
+/* cabecera mínima: solo el buscador; Filtros y Menú flotan sobre las citas */
+.search { padding: 6px 0; }
+.stick { border-bottom: 1px solid var(--line); }
+.panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 6; background: var(--bg); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  max-height: calc(100vh - 70px); max-height: calc(100dvh - 70px); overflow-y: auto; padding: 8px 0 18px; }
+.sec { margin: 20px 0 6px; font: 600 .78rem var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.small { font-size: .85rem; }
+.panel .fmt select, .panel select { width: 100%; }
+.panel label .btn { align-self: flex-start; }
+.tabs { margin-top: 2px; border-bottom: 1px solid var(--line); }
+.status { padding: 4px 0 0; }
+.q { scroll-margin-top: 80px; }

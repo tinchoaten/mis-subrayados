@@ -745,6 +745,17 @@ function toggle(btn, panel, other) {
 var P_F = { btn: $('#btnFilters'), panel: $('#filters') }, P_D = { btn: $('#btnData'), panel: $('#dataPanel') };
 P_F.btn.addEventListener('click', function () { toggle(P_F.btn, P_F.panel, P_D); });
 P_D.btn.addEventListener('click', function () { updateDataStats(); toggle(P_D.btn, P_D.panel, P_F); });
+function closePanels() {
+  P_F.panel.hidden = P_D.panel.hidden = true;
+  P_F.btn.setAttribute('aria-expanded', 'false'); P_D.btn.setAttribute('aria-expanded', 'false');
+}
+/* los paneles flotan sobre las citas y se cierran al tocar afuera */
+document.addEventListener('pointerdown', function (e) {
+  if (P_F.panel.hidden && P_D.panel.hidden) return;
+  if (e.target.closest('.panel') || e.target.closest('#btnFilters') || e.target.closest('#btnData')) return;
+  closePanels();
+});
+$('#btnFiltersDone').addEventListener('click', closePanels);
 $('#btnTheme').addEventListener('click', function () {
   UITHEME = { auto: 'light', light: 'dark', dark: 'auto' }[UITHEME]; LS.set('uitema', UITHEME); applyUITheme();
 });

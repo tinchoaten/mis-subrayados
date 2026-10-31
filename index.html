@@ -21,41 +21,51 @@
 </head>
 <body>
 <a class="skip" href="#main">Saltar al contenido</a>
-
-<header class="top">
-  <div class="wrap">
-    <div class="bar">
-      <h1 class="brand"><a href="#/buscar">Mis subrayados</a></h1>
-      <div class="bar-end">
-        <a class="btn pri" href="#/agregar" id="btnAdd">+ Agregar</a>
-        <button class="btn quiet" id="btnData" aria-expanded="false" aria-controls="dataPanel">Mis datos</button>
-        <button class="btn quiet" id="btnTheme" aria-label="Cambiar tema de color">Auto</button>
-      </div>
-    </div>
-  </div>
-</header>
+<h1 class="sr">Mis subrayados</h1>
 
 <div class="stick">
   <div class="wrap">
     <form class="search" role="search" id="searchForm" autocomplete="off">
       <label class="sr" for="q">Buscar en las citas</label>
-      <input id="q" type="search" placeholder="Buscar una palabra o frase…" enterkeyhint="search" spellcheck="false">
+      <input id="q" type="search" placeholder="Buscar en mis citas…" enterkeyhint="search" spellcheck="false">
       <button type="button" class="btn quiet" id="btnFilters" aria-expanded="false" aria-controls="filters">Filtros</button>
+      <button type="button" class="btn quiet" id="btnData" aria-expanded="false" aria-controls="dataPanel">Menú</button>
     </form>
+  </div>
 
-    <div class="panel" id="dataPanel" hidden>
-      <p><strong>Tus marcas se guardan en este navegador.</strong> Con la sincronización conectada, también se comparten entre tus dispositivos. Si no, o si borrás los datos del navegador, exportá una copia para respaldarlas.</p>
-      <p class="muted" id="dataStats"></p>
-      <p class="muted" id="dataDel"></p>
+  <!-- Menú: todo lo que no es leer. Flota sobre las citas y se cierra solo -->
+  <div class="panel" id="dataPanel" hidden>
+    <div class="wrap">
+      <p class="row" style="margin-top:4px"><a class="btn pri" href="#/agregar" id="btnAdd">+ Agregar una cita</a></p>
+
       <div id="syncBox" class="syncbox"></div>
+
+      <h3 class="sec">Preferencias</h3>
+      <div class="grid">
+        <label class="fmt" id="fmtWrap">Copiar como
+          <select id="fFmt">
+            <option value="ref">“cita” (Autor, Título, pos.)</option>
+            <option value="md">Markdown (&gt; cita)</option>
+            <option value="txt">Solo el texto</option>
+          </select>
+        </label>
+        <label>Apariencia <button type="button" class="btn" id="btnTheme" aria-label="Cambiar tema de color">Auto</button></label>
+      </div>
+
+      <h3 class="sec">Mis datos</h3>
+      <p class="muted small">Tus marcas se guardan en este navegador. Con la sincronización conectada, también se comparten entre tus dispositivos. Si no, exportá una copia para respaldarlas.</p>
+      <p class="muted small" id="dataStats"></p>
+      <p class="muted small" id="dataDel"></p>
       <div class="row">
         <button class="btn" id="btnExport">Exportar</button>
         <button class="btn" id="btnImport">Importar…</button>
         <input type="file" id="fileImport" accept="application/json,.json" hidden>
       </div>
     </div>
+  </div>
 
-    <div class="panel" id="filters" hidden>
+  <div class="panel" id="filters" hidden>
+    <div class="wrap">
       <div class="grid">
         <label>Libro <select id="fLibro"></select></label>
         <label>Tema <select id="fTema"></select></label>
@@ -67,41 +77,33 @@
           <option value="fic">Ficción</option>
           <option value="doc">Documentos</option>
         </select></label>
+        <label class="fmt" id="ordWrap">Orden
+          <select id="fOrd">
+            <option value="">Como en el libro</option>
+            <option value="fecha">Más recientes primero</option>
+            <option value="titulo">Por título</option>
+          </select>
+        </label>
         <label class="check"><input type="checkbox" id="fFav"> Solo favoritas ★</label>
         <label class="check"><input type="checkbox" id="fMias"> Solo las que agregué</label>
       </div>
-      <div class="row"><button class="btn" id="btnClear">Limpiar filtros</button></div>
+      <div class="row"><button class="btn pri" id="btnFiltersDone">Ver resultados</button><button class="btn" id="btnClear">Limpiar filtros</button></div>
     </div>
-
-    <nav class="tabs" aria-label="Secciones" id="tabs">
-      <a href="#/buscar" data-v="buscar">Buscar</a>
-      <a href="#/libros" data-v="libros">Libros</a>
-      <a href="#/temas" data-v="temas">Temas</a>
-      <a href="#/autores" data-v="autores">Autores</a>
-      <a href="#/favoritas" data-v="favoritas">Favoritas</a>
-      <a href="#/repaso" data-v="repaso">Repaso</a>
-    </nav>
   </div>
 </div>
 
 <main id="main" class="wrap" tabindex="-1">
+  <nav class="tabs" aria-label="Secciones" id="tabs">
+    <a href="#/buscar" data-v="buscar">Buscar</a>
+    <a href="#/libros" data-v="libros">Libros</a>
+    <a href="#/temas" data-v="temas">Temas</a>
+    <a href="#/autores" data-v="autores">Autores</a>
+    <a href="#/favoritas" data-v="favoritas">Favoritas</a>
+    <a href="#/repaso" data-v="repaso">Repaso</a>
+  </nav>
   <div id="chips" class="chips" aria-label="Filtros activos"></div>
   <div class="status">
     <p id="count" role="status" aria-live="polite" aria-atomic="true"></p>
-    <label class="fmt" id="ordWrap">Orden
-      <select id="fOrd">
-        <option value="">Como en el libro</option>
-        <option value="fecha">Más recientes primero</option>
-        <option value="titulo">Por título</option>
-      </select>
-    </label>
-    <label class="fmt" id="fmtWrap">Copiar como
-      <select id="fFmt">
-        <option value="ref">“cita” (Autor, Título, pos.)</option>
-        <option value="md">Markdown (&gt; cita)</option>
-        <option value="txt">Solo el texto</option>
-      </select>
-    </label>
   </div>
   <div id="view"></div>
 </main>
