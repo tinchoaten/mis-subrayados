@@ -27,9 +27,24 @@ Hablale en español rioplatense (voseo). Sé breve: resumí qué agregaste, no c
 - Kindle guarda un subrayado **cada vez que se amplía**, así que una misma frase aparece varias veces (por ejemplo `5847-5852` y `5847-5855`). El script las fusiona en una sola, la más larga, si se superponen y pasaron menos de 15 minutos.
 - Los libros físicos y los documentos (`c: "doc"`) **no vienen del Clippings**: llegan por otro lado y no llevan `s` ni `d`. Si Juan trae citas de esos, se cargan aparte, a pedido.
 
+## Citas cargadas a mano desde el celu
+
+Juan puede agregar citas desde el sitio (botón **+ Agregar**): libros en papel, artículos, cualquier cosa fuera del Kindle. Quedan en el navegador del celu hasta que las pase al archivo. Cuando haya, te va a pasar el archivo **`subrayados-mis-datos.json`** (Mis datos → Exportar). Lo que importa de ese archivo es la lista `mias`:
+
+```json
+{ "id": "M-mvwlngsa", "x": "texto", "t": "Título", "a": "Autor", "bc": "MGG", "g": "42", "n": ["mi nota"], "d": "31 oct 2026", "iso": "2026-10-31T16:12:26Z" }
+```
+
+- `bc` es el código de un libro que ya existe. Si falta, es un **libro nuevo**: `t` y `a` son lo que Juan escribió (confirmá título limpio, código y categoría `nf` o `fic`, como en el flujo normal).
+- Pasalas a `data.js` como cualquier cita: código siguiente del libro, `x`, `g` (si hay), `d`, `n` (si hay nota) y temas `h`. **No llevan `s`** (no hay posición Kindle). Van al final del libro, salvo que Juan indique otro lugar.
+- Antes de agregar, **buscá repetidas** contra `data.js` (mismo texto, ignorando tildes y puntuación). Si ya está, no la dupliques y avisale a Juan.
+- No cambies ni borres nada en el celu: cuando el sitio se actualice, las citas pendientes que ya estén en `data.js` **desaparecen solas** de la lista de pendientes y heredan sus favoritas, etiquetas de uso y temas corregidos.
+- Los demás datos del archivo (`fav`, `uso`, `temas`) son marcas personales: no los toques.
+- Las citas pendientes no existen en el `My Clippings.txt`, así que no pasan por `nuevas.js` ni por `registro.json`.
+
 ## Flujo (seguilo en este orden)
 
-1. **Pedí el archivo** si Juan no lo pasó. Ruta habitual: `C:\Users\tinch\Downloads\My Clippings.txt`.
+1. **Pedí el archivo** si Juan no lo pasó. Ruta habitual: `C:\Users\tinch\Downloads\My Clippings.txt`. Preguntale también si tiene citas cargadas desde el celu (`subrayados-mis-datos.json`).
 2. **Detectá lo nuevo:** `node actualizacion/nuevas.js "<ruta>"`. Lee el resumen y el `nuevas.json`.
 3. **Contale a Juan el panorama antes de tocar nada:** cuántas citas nuevas, en qué libros, cuáles son libros nuevos, y si hay avisos (`revisarFechaAnterior`, `posibleRepetida`, notas sueltas). Si hay algo dudoso, preguntá **una sola vez**, todo junto.
 4. **Libros existentes** (`libroExistente` con código): agregá las citas al final del libro (sus posiciones son posteriores). El número siguiente es `ultimoNumero + 1`. **Nunca reutilices un número ya usado**, aunque esa cita se haya borrado: los códigos coinciden con el documento Word de Juan.

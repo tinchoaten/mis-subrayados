@@ -173,3 +173,26 @@ main:focus{outline:none}
 .src a::after, .meta a::after { content: ""; position: absolute; inset: -12px -4px; }
 .chip { min-height: 44px; }
 .fmt select { min-height: 44px; }
+
+
+/* agregar cita */
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+.bar-end { align-items: center; }
+.add { padding-bottom: 40px; }
+.add h2.grp { margin-top: 20px; }
+.add label { display: block; margin: 18px 0 4px; font-size: .85rem; color: var(--muted); }
+.add .lblrow { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 18px; }
+.add .lblrow label { margin: 0 0 6px; }
+.add textarea, .add input { width: 100%; font: 1rem var(--sans); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+.add textarea { font-family: var(--serif); font-size: 1.1rem; line-height: 1.55; resize: vertical; }
+.add input { min-height: 44px; }
+.add textarea:focus, .add input:focus { outline: none; border-color: var(--accent); }
+.add input[readonly] { color: var(--muted); }
+.hint { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
+.err { margin: 12px 0 0; color: var(--accent); font-size: .9rem; min-height: 1.2em; }
+.err a { color: var(--accent); }
+.meta span { color: var(--accent); }
+.brand, .bar-end .btn { white-space: nowrap; }
+.bar-end .btn { padding: 0 9px; font-size: .85rem; }
+.bar-end .btn.pri { padding: 0 12px; margin-right: 2px; }
+@media (max-width: 360px) { .brand { font-size: .9rem; } }

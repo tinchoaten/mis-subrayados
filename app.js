@@ -22,6 +22,9 @@ var USOLIST = LS.get('usolist', ['columna', 'clase', 'artículo', 'charla']);
 var TEMAS = LS.get('temas', {});
 var FMT = LS.get('fmt', 'ref');
 var UITHEME = LS.get('uitema', 'auto');
+var MIAS = LS.get('mias', []);           // citas cargadas a mano desde el celu (pendientes de pasar a data.js)
+var LASTBOOK = LS.get('lastbook', { t: '', a: '' });
+function saveMias() { LS.set('mias', MIAS); }
 function saveMarks() { LS.set('fav', Array.from(FAV)); LS.set('uso', USO); LS.set('usolist', USOLIST); LS.set('temas', TEMAS); }
 
 /* ---------- datos derivados ---------- */
@@ -54,13 +57,85 @@ DB.books.forEach(function (b) {
     ALL.push(q); BYID[q.i] = q;
   });
 });
-var AUTHNAMES = Object.keys(AUTHORS).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+var AUTHNAMES = [];
+function refreshAuthors() { AUTHNAMES = Object.keys(AUTHORS).sort(function (a, b) { return a.localeCompare(b, 'es'); }); }
+refreshAuthors();
+var MES3 = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function fold2(s) { return fold(s).replace(/[^a-z0-9]+/g, ' ').trim(); }
+ALL.forEach(function (q) { q.f2 = fold2(q.x); });
+
+/* citas propias: libro, indexado y baja */
+function matchBook(t) {
+  var n = fold(t.trim()); if (!n) return null;
+  return DB.books.filter(function (b) { return fold(b.t) === n; })[0] || null;
+}
+function miaBook(m) {
+  var b = m.bc && BOOKS[m.bc];
+  if (b) return b;
+  var key = 'X-' + fold(m.t || 'sin titulo').replace(/ /g, '-').slice(0, 40);
+  b = BOOKS[key];
+  if (!b) {
+    b = { i: key, t: m.t || 'Sin título', a: m.a || '\u2014', c: 'nf', l: 'es', n: 0, p: '', m: '', q: [], virtual: true };
+    b.au = splitAuthors(b.a);
+    b.au.forEach(function (n) { (AUTHORS[n] = AUTHORS[n] || { n: 0, books: 0 }).books++; });
+    DB.books.push(b); BOOKS[key] = b;
+  }
+  return b;
+}
+function indexMia(m) {
+  var b = miaBook(m);
+  var q = { i: m.id, x: m.x, g: m.g || '', n: m.n && m.n.length ? m.n : undefined, d: m.d, h: [], mia: true, b: b };
+  q.dk = dateKey(q.d); q.f2 = fold2(q.x);
+  q.fx = fold(q.x + ' ' + (q.n || []).join(' ') + ' ' + b.t + ' ' + b.a + ' ' + q.i);
+  ALL.push(q); BYID[q.i] = q;
+  b.au.forEach(function (n) { AUTHORS[n].n++; });
+  return q;
+}
+function findDup(text) {
+  var k = fold2(text).slice(0, 60); if (k.length < 20) return null;
+  var full = fold2(text);
+  for (var i = 0; i < ALL.length; i++) {
+    var q = ALL[i]; if (q.mia) continue;
+    if (q.f2.indexOf(k) > -1 || (q.f2.length >= 20 && full.indexOf(q.f2.slice(0, 60)) > -1)) return q;
+  }
+  return null;
+}
+function migrateMarks(from, to) {
+  if (FAV.has(from)) { FAV.delete(from); FAV.add(to); }
+  if (USO[from]) { var u = (USO[to] || []).concat(USO[from]); USO[to] = u.filter(function (x, k) { return u.indexOf(x) === k; }); delete USO[from]; }
+  if (TEMAS[from]) { if (!TEMAS[to]) TEMAS[to] = TEMAS[from]; delete TEMAS[from]; }
+}
+function removeMia(id, keepMarks) {
+  MIAS = MIAS.filter(function (m) { return m.id !== id; });
+  var q = BYID[id];
+  if (q) {
+    ALL.splice(ALL.indexOf(q), 1); delete BYID[id];
+    q.b.au.forEach(function (n) { if (AUTHORS[n]) AUTHORS[n].n--; });
+    if (q.b.virtual && !ALL.some(function (x) { return x.b === q.b; })) {
+      DB.books.splice(DB.books.indexOf(q.b), 1); delete BOOKS[q.b.i];
+      q.b.au.forEach(function (n) { if (AUTHORS[n] && --AUTHORS[n].books <= 0 && AUTHORS[n].n <= 0) delete AUTHORS[n]; });
+    }
+  }
+  if (!keepMarks) { FAV.delete(id); delete USO[id]; delete TEMAS[id]; saveMarks(); }
+  saveMias(); refreshAuthors();
+}
+/* las que ya pasaron a data.js se ocultan solas y heredan favoritas, usos y temas */
+(function () {
+  var kept = [], changed = false;
+  MIAS.forEach(function (m) {
+    var d = findDup(m.x);
+    if (d) { migrateMarks(m.id, d.i); changed = true; } else kept.push(m);
+  });
+  MIAS = kept;
+  if (changed) { saveMias(); saveMarks(); }
+  MIAS.forEach(indexMia); refreshAuthors();
+})();
 function themesOf(q) { return TEMAS[q.i] || q.h || []; }
 function usoOf(q) { return USO[q.i] || []; }
 
 /* ---------- estado en la URL ---------- */
-var VIEWS = ['buscar', 'libros', 'temas', 'autores', 'favoritas', 'repaso'];
-var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'ord', 'adivinar', 'c'];
+var VIEWS = ['buscar', 'libros', 'temas', 'autores', 'favoritas', 'repaso', 'agregar'];
+var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias', 'ord', 'adivinar', 'c'];
 var S = { v: 'buscar', p: {} };
 var positions = {}, curHash = null;
 
@@ -97,6 +172,7 @@ function applyFilters(p, useQ, forceFav) {
   var fav = forceFav || p.fav;
   return ALL.filter(function (q) {
     if (p.cita && q.i !== p.cita) return false;
+    if (p.mias && !q.mia) return false;
     if (p.libro && q.b.i !== p.libro) return false;
     if (p.cat && q.b.c !== p.cat) return false;
     if (p.tema && themesOf(q).indexOf(p.tema) < 0) return false;
@@ -175,7 +251,8 @@ function toast(msg) {
 
 /* ---------- tarjeta de cita ---------- */
 function metaHTML(q) {
-  var parts = themesOf(q).map(function (k) { return '<a href="#/buscar?tema=' + k + '">' + esc(THEMES[k]) + '</a>'; });
+  var parts = q.mia ? ['<span>Agregada desde el celu · pendiente de pasar al archivo</span>'] : [];
+  parts = parts.concat(themesOf(q).map(function (k) { return '<a href="#/buscar?tema=' + k + '">' + esc(THEMES[k]) + '</a>'; }));
   usoOf(q).forEach(function (u) { parts.push('<a href="#/buscar?uso=' + encodeURIComponent(u) + '">Uso: ' + esc(u) + '</a>'); });
   return parts.join('');
 }
@@ -215,6 +292,7 @@ function morePanel(q) {
     '<form class="newuso"><input placeholder="Nueva etiqueta…" aria-label="Nueva etiqueta de uso" maxlength="30"><button class="btn">Agregar</button></form>' +
     '<h3>Temas</h3><div class="opts">' + TK.map(function (k) { return optHTML('tema', k, th.indexOf(k) > -1, THEMES[k]); }).join('') + '</div>' +
     '<p class="row"><button class="btn" data-act="link">Copiar enlace a esta cita</button></p>' +
+    (q.mia ? '<p class="row"><a class="btn" href="#/agregar?c=' + encodeURIComponent(q.i) + '">Editar</a><button class="btn" data-act="delmia">Borrar esta cita</button></p>' : '') +
     '<p><button class="btn" data-act="resettemas"' + (TEMAS[q.i] ? '' : ' disabled') + '>Volver a los temas originales</button></p></div>';
 }
 
@@ -270,14 +348,15 @@ function viewFavoritas() {
   showList(items, termsOf(S.p.q), head);
 }
 function groupBooks(f) {
-  var out = '';
+  var out = '', cb = {};
+  ALL.forEach(function (q) { cb[q.b.i] = (cb[q.b.i] || 0) + 1; });
   CATORDER.forEach(function (c) {
     var bs = DB.books.filter(function (b) { return b.c === c && (!f || fold(b.t + ' ' + b.a).indexOf(f) > -1); })
       .sort(function (a, b) { return a.t.localeCompare(b.t, 'es'); });
     if (!bs.length) return;
     out += '<h2 class="grp">' + CAT[c] + ' · ' + bs.length + '</h2><ul class="list">' + bs.map(function (b) {
       return '<li><a href="#/buscar?libro=' + encodeURIComponent(b.i) + '"><span><span class="t">' + esc(b.t) + '</span>' +
-        (b.c !== 'doc' && b.a !== '—' ? '<span class="a">' + esc(b.a) + '</span>' : '') + '</span><span class="s">' + plural(b.q.length, 'cita', 'citas') + '</span></a></li>';
+        (b.c !== 'doc' && b.a !== '—' ? '<span class="a">' + esc(b.a) + '</span>' : '') + '</span><span class="s">' + plural(cb[b.i] || 0, 'cita', 'citas') + '</span></a></li>';
     }).join('') + '</ul>';
   });
   return out || '<div class="empty"><p>Ningún libro coincide.</p></div>';
@@ -305,6 +384,66 @@ function viewAutores() {
   setCount(plural(AUTHNAMES.length, 'autor', 'autores'));
   view.innerHTML = '<input class="filter-in" id="fa" type="search" placeholder="Filtrar autores…" aria-label="Filtrar autores"><div id="fa-out">' + listAuthors('') + '</div>';
   $('#fa').addEventListener('input', function (e) { $('#fa-out').innerHTML = listAuthors(fold(e.target.value.trim())); });
+}
+
+function syncBookField() {
+  var t = $('#aT'), a = $('#aA'), info = $('#aBookInfo'); if (!t) return;
+  var b = matchBook(t.value);
+  if (b && !b.virtual) { a.value = (b.a && b.a !== '\u2014') ? b.a : ''; a.readOnly = true; info.textContent = 'Libro de tu colección (' + b.i + ').'; }
+  else {
+    a.readOnly = false; if (b && !a.value) a.value = b.a === '\u2014' ? '' : b.a;
+    info.textContent = t.value.trim() ? 'Libro nuevo: se crea cuando pases tus citas al archivo.' : '';
+  }
+}
+function viewAgregar() {
+  setCount('');
+  var m = S.p.c ? MIAS.filter(function (x) { return x.id === S.p.c; })[0] : null;
+  var bk = m ? (m.bc && BOOKS[m.bc] ? BOOKS[m.bc] : { t: m.t, a: m.a }) : LASTBOOK;
+  var bt = bk.t || '', ba = (bk.a && bk.a !== '\u2014') ? bk.a : '';
+  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var hint = ios ? 'En iPhone: tocá el campo y elegí <b>Escanear texto</b> (ícono de cámara con renglones) para pasar la página del libro a texto.'
+    : 'Escribila, pegala, o en el celu usá el teclado para escanear texto con la cámara.';
+  view.innerHTML = '<form class="add" id="addForm" novalidate data-edit="' + (m ? esc(m.id) : '') + '">' +
+    '<h2 class="grp">' + (m ? 'Editar cita' : 'Agregar una cita') + '</h2>' +
+    '<div class="lblrow"><label for="aX">Cita</label><button type="button" class="btn" data-act="paste">Pegar</button></div>' +
+    '<textarea id="aX" rows="6" lang="es">' + esc(m ? m.x : '') + '</textarea>' +
+    '<p class="hint">' + hint + '</p>' +
+    '<label for="aT">Libro</label><input id="aT" list="booksList" value="' + esc(bt) + '" autocomplete="off" placeholder="Elegí uno de tu lista o escribí uno nuevo">' +
+    '<datalist id="booksList">' + DB.books.map(function (b) { return '<option value="' + esc(b.t) + '">'; }).join('') + '</datalist>' +
+    '<p class="hint" id="aBookInfo"></p>' +
+    '<label for="aA">Autor</label><input id="aA" value="' + esc(ba) + '" autocomplete="off" placeholder="Nombre y apellido">' +
+    '<label for="aG">Página (opcional)</label><input id="aG" inputmode="numeric" autocomplete="off" value="' + esc(m && m.g ? m.g : '') + '">' +
+    '<label for="aN">Mi nota (opcional)</label><textarea id="aN" rows="2" lang="es">' + esc(m && m.n ? m.n.join('\n') : '') + '</textarea>' +
+    '<p class="err" id="aErr" role="alert"></p>' +
+    '<div class="row"><button class="btn pri" type="submit">' + (m ? 'Guardar cambios' : 'Guardar') + '</button>' +
+    (m ? '' : '<button class="btn" type="button" data-act="saveagain">Guardar y agregar otra</button>') +
+    '<a class="btn" href="#/buscar">Cancelar</a></div></form>';
+  syncBookField();
+  if (!m) $('#aX').focus();
+}
+function saveForm(again) {
+  var f = $('#addForm'), editId = f.dataset.edit, err = $('#aErr');
+  var x = $('#aX').value.replace(/\s+/g, ' ').trim(), t = $('#aT').value.trim(), a = $('#aA').value.trim(),
+      g = $('#aG').value.trim(), note = $('#aN').value.trim();
+  if (x.length < 3) { err.textContent = 'Escribí o pegá la cita.'; $('#aX').focus(); return; }
+  if (!t) { err.textContent = 'Indicá de qué libro es.'; $('#aT').focus(); return; }
+  var dup = findDup(x);
+  if (dup) { err.innerHTML = 'Esa cita ya está en tus subrayados: <a href="#/buscar?cita=' + encodeURIComponent(dup.i) + '">' + esc(dup.i) + '</a>.'; return; }
+  var b = matchBook(t), now = new Date();
+  var rec = { id: editId || 'M-' + Date.now().toString(36), x: x, t: b ? b.t : t, a: b && !b.virtual ? (b.a === '\u2014' ? '' : b.a) : a,
+              g: g, n: note ? [note] : [], d: now.getDate() + ' ' + MES3[now.getMonth()] + ' ' + now.getFullYear(), iso: now.toISOString() };
+  if (b && !b.virtual) rec.bc = b.i;
+  if (editId) {
+    var old = MIAS.filter(function (z) { return z.id === editId; })[0];
+    if (old) { rec.d = old.d; rec.iso = old.iso; }
+    removeMia(editId, true);
+  }
+  MIAS.push(rec); saveMias(); indexMia(rec); refreshAuthors(); fillFilters(); updateDataStats();
+  LASTBOOK = { t: rec.t, a: rec.a }; LS.set('lastbook', LASTBOOK);
+  if (again) {
+    $('#aX').value = ''; $('#aG').value = ''; $('#aN').value = ''; err.textContent = '';
+    toast('Guardada. Cargá otra'); $('#aX').focus(); syncBookField();
+  } else { toast('Cita guardada'); go('buscar', { cita: rec.id }); }
 }
 
 var revPool = [];
@@ -351,6 +490,7 @@ function fillFilters() {
 function syncControls() {
   Object.keys(FILTERUI).forEach(function (k) { $(FILTERUI[k]).value = S.p[k] || ''; });
   $('#fFav').checked = !!S.p.fav;
+  $('#fMias').checked = !!S.p.mias;
   var qi = $('#q'); if (!typing) qi.value = S.p.q || '';
   Array.prototype.forEach.call(document.querySelectorAll('#tabs a'), function (a) {
     if (a.dataset.v === S.v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -361,6 +501,7 @@ function syncControls() {
   function chip(k, label) { chips += '<button class="chip" data-clear="' + k + '" aria-label="Quitar filtro: ' + esc(label) + '"><span>' + esc(label) + '</span><i aria-hidden="true">×</i></button>'; }
   if (['buscar', 'favoritas', 'repaso'].indexOf(S.v) > -1) {
     if (S.p.cita) chip('cita', 'Una cita: ' + S.p.cita);
+    if (S.p.mias) chip('mias', 'Agregadas por mí');
     if (S.p.libro && BOOKS[S.p.libro]) chip('libro', BOOKS[S.p.libro].t);
     if (S.p.tema && THEMES[S.p.tema]) chip('tema', THEMES[S.p.tema]);
     if (S.p.autor) chip('autor', S.p.autor);
@@ -369,11 +510,11 @@ function syncControls() {
     if (S.p.fav && S.v !== 'favoritas') chip('fav', 'Solo favoritas');
   }
   $('#chips').innerHTML = chips;
-  var n = ['libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita'].filter(function (k) { return S.p[k]; }).length;
+  var n = ['libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias'].filter(function (k) { return S.p[k]; }).length;
   $('#btnFilters').textContent = n ? 'Filtros (' + n + ')' : 'Filtros';
 }
 function updateDataStats() {
-  $('#dataStats').textContent = 'Favoritas: ' + FAV.size + ' · citas con etiqueta de uso: ' + Object.keys(USO).length + ' · citas con temas corregidos: ' + Object.keys(TEMAS).length;
+  $('#dataStats').textContent = 'Favoritas: ' + FAV.size + ' · citas con etiqueta de uso: ' + Object.keys(USO).length + ' · citas con temas corregidos: ' + Object.keys(TEMAS).length + ' · citas agregadas desde el celu: ' + MIAS.length;
 }
 function applyUITheme() {
   var r = document.documentElement;
@@ -392,12 +533,12 @@ function route(fromPop) {
   syncControls();
   $('#chips').style.display = ['buscar', 'favoritas', 'repaso'].indexOf(S.v) > -1 ? '' : 'none';
   $('#ordWrap').style.display = (S.v === 'buscar' || S.v === 'favoritas') ? '' : 'none';
-  $('#fmtWrap').style.visibility = ['libros', 'temas', 'autores'].indexOf(S.v) > -1 ? 'hidden' : '';
-  ({ buscar: viewBuscar, libros: viewLibros, temas: viewTemas, autores: viewAutores, favoritas: viewFavoritas, repaso: viewRepaso })[S.v]();
+  $('#fmtWrap').style.visibility = ['libros', 'temas', 'autores', 'agregar'].indexOf(S.v) > -1 ? 'hidden' : '';
+  ({ buscar: viewBuscar, libros: viewLibros, temas: viewTemas, autores: viewAutores, favoritas: viewFavoritas, repaso: viewRepaso, agregar: viewAgregar })[S.v]();
   var pos = fromPop && positions[location.hash];
   if (pos) { while (L.shown < pos.n && L.shown < L.items.length) renderMore(); window.scrollTo(0, pos.y); }
   else if (!firstRender && !typing) { window.scrollTo(0, 0); }
-  document.title = (S.v === 'buscar' ? '' : { libros: 'Libros', temas: 'Temas', autores: 'Autores', favoritas: 'Favoritas', repaso: 'Repaso' }[S.v] + ' · ') + 'Mis subrayados';
+  document.title = (S.v === 'buscar' ? '' : { libros: 'Libros', temas: 'Temas', autores: 'Autores', favoritas: 'Favoritas', repaso: 'Repaso', agregar: 'Agregar' }[S.v] + ' · ') + 'Mis subrayados';
 }
 var typing = false;
 window.addEventListener('popstate', function () { route(true); });
@@ -460,6 +601,23 @@ view.addEventListener('click', function (e) {
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
     toast('Archivo descargado');
   }
+  else if (act === 'paste') {
+    if (!navigator.clipboard || !navigator.clipboard.readText) { toast('Pegá con el dedo en el campo'); }
+    else navigator.clipboard.readText().then(function (txt) {
+      var ta = $('#aX'); if (txt) { ta.value = ta.value ? ta.value + ' ' + txt : txt; ta.focus(); toast('Pegado'); } else toast('El portapapeles está vacío');
+    }, function () { toast('No se pudo leer: pegá con el dedo en el campo'); });
+  }
+  else if (act === 'saveagain') saveForm(true);
+  else if (act === 'delmia' && c) {
+    if (t.dataset.sure) {
+      var qq = c.q; removeMia(qq.i); fillFilters(); updateDataStats();
+      var ix = L.items.indexOf(qq); if (ix > -1) { L.items.splice(ix, 1); L.shown = Math.max(0, L.shown - 1); }
+      c.el.remove(); toast('Cita borrada');
+    } else {
+      t.dataset.sure = '1'; t.textContent = 'Tocá otra vez para borrar';
+      setTimeout(function () { if (t.isConnected) { delete t.dataset.sure; t.textContent = 'Borrar esta cita'; } }, 4000);
+    }
+  }
   else if (act === 'moremore') renderMore();
   else if (act === 'next') nextRev();
   else if (act === 'clear') go(S.v === 'favoritas' ? 'favoritas' : S.v === 'repaso' ? 'repaso' : 'buscar', {});
@@ -482,7 +640,10 @@ view.addEventListener('change', function (e) {
   }
   saveMarks(); refreshMeta(c); fillFilters(); syncControls(); updateDataStats();
 });
+view.addEventListener('input', function (e) { if (e.target.id === 'aT') syncBookField(); });
+view.addEventListener('change', function (e) { if (e.target.id === 'aT') syncBookField(); });
 view.addEventListener('submit', function (e) {
+  if (e.target.id === 'addForm') { e.preventDefault(); saveForm(false); return; }
   if (!e.target.classList.contains('newuso')) return;
   e.preventDefault();
   var c = cardOf(e.target), inp = e.target.querySelector('input'), name = inp.value.trim();
@@ -498,7 +659,7 @@ document.addEventListener('click', function (e) {
   var a = e.target.closest('a[href^="#/"]');
   if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
     e.preventDefault(); navigate(a.getAttribute('href'), false);
-    $('#main').focus({ preventScroll: true });
+    if (S.v !== 'agregar') $('#main').focus({ preventScroll: true });
     return;
   }
   var ch = e.target.closest('[data-clear]');
@@ -520,6 +681,7 @@ $('#q').addEventListener('input', function (e) {
 });
 function filterChange(k, val) { go(listView(S.v) === S.v || S.v === 'repaso' ? S.v : 'buscar', withP((function (o) { o[k] = val; o.c = ''; return o; })({}))); }
 Object.keys(FILTERUI).forEach(function (k) { $(FILTERUI[k]).addEventListener('change', function (e) { filterChange(k, e.target.value); }); });
+$('#fMias').addEventListener('change', function (e) { filterChange('mias', e.target.checked ? '1' : ''); });
 $('#fFav').addEventListener('change', function (e) { filterChange('fav', e.target.checked ? '1' : ''); });
 $('#btnClear').addEventListener('click', function () { go(S.v === 'favoritas' || S.v === 'repaso' ? S.v : 'buscar', {}); });
 $('#fOrd').addEventListener('change', function (e) { go(S.v, withP({ ord: e.target.value }), true); });
@@ -539,7 +701,7 @@ $('#btnTheme').addEventListener('click', function () {
 
 /* exportar / importar */
 $('#btnExport').addEventListener('click', function () {
-  var data = { version: 1, fav: Array.from(FAV), uso: USO, usolist: USOLIST, temas: TEMAS };
+  var data = { version: 1, fav: Array.from(FAV), uso: USO, usolist: USOLIST, temas: TEMAS, mias: MIAS };
   var blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'subrayados-mis-datos.json';
   document.body.appendChild(a); a.click(); a.remove();
@@ -558,6 +720,11 @@ $('#fileImport').addEventListener('change', function (e) {
       Object.keys(d.uso || {}).forEach(function (i) { var m = (USO[i] || []).concat(d.uso[i]); USO[i] = m.filter(function (x, k) { return m.indexOf(x) === k; }); });
       (d.usolist || []).forEach(function (u) { if (USOLIST.indexOf(u) < 0) USOLIST.push(u); });
       Object.keys(d.temas || {}).forEach(function (i) { TEMAS[i] = d.temas[i]; });
+      (d.mias || []).forEach(function (m) {
+        if (!m || !m.id || !m.x || BYID[m.id] || findDup(m.x)) return;
+        MIAS.push(m); indexMia(m);
+      });
+      saveMias(); refreshAuthors();
       saveMarks(); fillFilters(); route(false); updateDataStats();
       toast('Importado: se sumó a lo que ya tenías');
     } catch (x) { toast('El archivo no es válido'); }
