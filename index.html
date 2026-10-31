@@ -6,6 +6,17 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light dark">
 <title>Mis subrayados</title>
+<meta name="description" content="Buscador personal de subrayados de lectura: buscá, filtrá y citá en un clic.">
+<meta name="theme-color" content="#b5532f">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mis subrayados">
+<meta property="og:description" content="Buscador personal de subrayados de lectura: buscá, filtrá y citá en un clic.">
+<meta property="og:locale" content="es_AR">
+<meta property="og:image" content="https://tinchoaten.github.io/mis-subrayados/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -73,7 +84,14 @@
   <div id="chips" class="chips" aria-label="Filtros activos"></div>
   <div class="status">
     <p id="count" role="status" aria-live="polite" aria-atomic="true"></p>
-    <label class="fmt">Copiar como
+    <label class="fmt" id="ordWrap">Orden
+      <select id="fOrd">
+        <option value="">Como en el libro</option>
+        <option value="fecha">Más recientes primero</option>
+        <option value="titulo">Por título</option>
+      </select>
+    </label>
+    <label class="fmt" id="fmtWrap">Copiar como
       <select id="fFmt">
         <option value="ref">“cita” (Autor, Título, pos.)</option>
         <option value="md">Markdown (&gt; cita)</option>

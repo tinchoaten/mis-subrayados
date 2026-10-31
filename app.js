@@ -37,6 +37,11 @@ function splitAuthors(a) {
   }).filter(Boolean);
 }
 
+var MESES = { ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6, jul: 7, ago: 8, sep: 9, set: 9, oct: 10, nov: 11, dic: 12 };
+function dateKey(d) {
+  var m = /(\d{1,2})\s+([a-záéíóú]+)\.?\s+(\d{4})/i.exec(d || '');
+  return m ? (+m[3]) * 10000 + (MESES[fold(m[2]).slice(0, 3)] || 0) * 100 + (+m[1]) : 0;
+}
 var ALL = [], BYID = {}, BOOKS = {}, AUTHORS = {};
 DB.books.forEach(function (b) {
   BOOKS[b.i] = b;
@@ -44,6 +49,7 @@ DB.books.forEach(function (b) {
   b.au.forEach(function (n) { (AUTHORS[n] = AUTHORS[n] || { n: 0, books: 0 }); AUTHORS[n].n += b.q.length; AUTHORS[n].books++; });
   b.q.forEach(function (q) {
     q.b = b;
+    q.dk = dateKey(q.d);
     q.fx = fold(q.x + ' ' + (q.n || []).join(' ') + ' ' + b.t + ' ' + b.a + ' ' + q.i);
     ALL.push(q); BYID[q.i] = q;
   });
@@ -54,7 +60,7 @@ function usoOf(q) { return USO[q.i] || []; }
 
 /* ---------- estado en la URL ---------- */
 var VIEWS = ['buscar', 'libros', 'temas', 'autores', 'favoritas', 'repaso'];
-var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'adivinar', 'c'];
+var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'ord', 'adivinar', 'c'];
 var S = { v: 'buscar', p: {} };
 var positions = {}, curHash = null;
 
@@ -90,6 +96,7 @@ function applyFilters(p, useQ, forceFav) {
   var terms = useQ ? termsOf(p.q) : [];
   var fav = forceFav || p.fav;
   return ALL.filter(function (q) {
+    if (p.cita && q.i !== p.cita) return false;
     if (p.libro && q.b.i !== p.libro) return false;
     if (p.cat && q.b.c !== p.cat) return false;
     if (p.tema && themesOf(q).indexOf(p.tema) < 0) return false;
@@ -99,6 +106,12 @@ function applyFilters(p, useQ, forceFav) {
     for (var i = 0; i < terms.length; i++) if (q.fx.indexOf(terms[i]) < 0) return false;
     return true;
   });
+}
+function sortItems(items, ord) {
+  var a = items.slice();
+  if (ord === 'fecha') a.sort(function (x, y) { return (y.dk - x.dk) || (ALL.indexOf(x) - ALL.indexOf(y)); });
+  else if (ord === 'titulo') a.sort(function (x, y) { return x.b.t.localeCompare(y.b.t, 'es') || (ALL.indexOf(x) - ALL.indexOf(y)); });
+  return a;
 }
 function highlight(text, terms) {
   if (!terms.length) return esc(text);
@@ -201,6 +214,7 @@ function morePanel(q) {
     '<h3>Para qué la usás</h3><div class="opts">' + USOLIST.map(function (x) { return optHTML('uso', x, u.indexOf(x) > -1); }).join('') + '</div>' +
     '<form class="newuso"><input placeholder="Nueva etiqueta…" aria-label="Nueva etiqueta de uso" maxlength="30"><button class="btn">Agregar</button></form>' +
     '<h3>Temas</h3><div class="opts">' + TK.map(function (k) { return optHTML('tema', k, th.indexOf(k) > -1, THEMES[k]); }).join('') + '</div>' +
+    '<p class="row"><button class="btn" data-act="link">Copiar enlace a esta cita</button></p>' +
     '<p><button class="btn" data-act="resettemas"' + (TEMAS[q.i] ? '' : ' disabled') + '>Volver a los temas originales</button></p></div>';
 }
 
@@ -229,7 +243,7 @@ function showList(items, terms, head) {
     io.observe(btn);
   }
 }
-function hasFilters() { return KEYS.some(function (k) { return k !== 'c' && k !== 'adivinar' && S.p[k]; }); }
+function hasFilters() { return KEYS.some(function (k) { return k !== 'c' && k !== 'adivinar' && k !== 'ord' && S.p[k]; }); }
 function emptyHTML() {
   return '<div class="empty"><p>No hay resultados: probá con menos palabras o quitá algún filtro.</p>' +
     (hasFilters() ? '<button class="btn pri" data-act="clear">Limpiar filtros</button>' : '') + '</div>';
@@ -239,15 +253,15 @@ function emptyHTML() {
 function setCount(t) { $('#count').textContent = t; }
 
 function viewBuscar() {
-  var items = applyFilters(S.p, true);
+  var items = sortItems(applyFilters(S.p, true), S.p.ord);
   var n = items.length;
   setCount(hasFilters() ? plural(n, 'resultado', 'resultados') + ' de ' + nf(ALL.length) : plural(n, 'cita', 'citas'));
   showList(items, termsOf(S.p.q));
 }
 function viewFavoritas() {
-  var items = applyFilters(S.p, true, true);
+  var items = sortItems(applyFilters(S.p, true, true), S.p.ord);
   setCount(plural(items.length, 'favorita', 'favoritas'));
-  var head = items.length ? '<p class="row" style="margin:0 0 4px"><button class="btn" data-act="copyall">Copiar todas (' + nf(items.length) + ')</button></p>' : '';
+  var head = items.length ? '<p class="row" style="margin:0 0 4px"><button class="btn" data-act="copyall">Copiar todas (' + nf(items.length) + ')</button><button class="btn" data-act="dlfav">Descargar</button></p>' : '';
   if (!items.length && !hasFilters()) {
     L = { items: [], shown: 0, terms: [] };
     view.innerHTML = '<div class="empty"><p>Todavía no marcaste favoritas. Tocá ☆ en cualquier cita.</p><a class="btn pri" href="#/buscar" style="display:inline-flex;align-items:center;text-decoration:none">Ir a buscar</a></div>';
@@ -342,9 +356,11 @@ function syncControls() {
     if (a.dataset.v === S.v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
   $('#fFmt').value = FMT;
+  $('#fOrd').value = S.p.ord || '';
   var chips = '';
   function chip(k, label) { chips += '<button class="chip" data-clear="' + k + '" aria-label="Quitar filtro: ' + esc(label) + '"><span>' + esc(label) + '</span><i aria-hidden="true">×</i></button>'; }
   if (['buscar', 'favoritas', 'repaso'].indexOf(S.v) > -1) {
+    if (S.p.cita) chip('cita', 'Una cita: ' + S.p.cita);
     if (S.p.libro && BOOKS[S.p.libro]) chip('libro', BOOKS[S.p.libro].t);
     if (S.p.tema && THEMES[S.p.tema]) chip('tema', THEMES[S.p.tema]);
     if (S.p.autor) chip('autor', S.p.autor);
@@ -353,7 +369,7 @@ function syncControls() {
     if (S.p.fav && S.v !== 'favoritas') chip('fav', 'Solo favoritas');
   }
   $('#chips').innerHTML = chips;
-  var n = ['libro', 'tema', 'autor', 'uso', 'cat', 'fav'].filter(function (k) { return S.p[k]; }).length;
+  var n = ['libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita'].filter(function (k) { return S.p[k]; }).length;
   $('#btnFilters').textContent = n ? 'Filtros (' + n + ')' : 'Filtros';
 }
 function updateDataStats() {
@@ -375,7 +391,8 @@ function route(fromPop) {
   curHash = location.hash;
   syncControls();
   $('#chips').style.display = ['buscar', 'favoritas', 'repaso'].indexOf(S.v) > -1 ? '' : 'none';
-  $('.status .fmt').style.visibility = ['libros', 'temas', 'autores'].indexOf(S.v) > -1 ? 'hidden' : '';
+  $('#ordWrap').style.display = (S.v === 'buscar' || S.v === 'favoritas') ? '' : 'none';
+  $('#fmtWrap').style.visibility = ['libros', 'temas', 'autores'].indexOf(S.v) > -1 ? 'hidden' : '';
   ({ buscar: viewBuscar, libros: viewLibros, temas: viewTemas, autores: viewAutores, favoritas: viewFavoritas, repaso: viewRepaso })[S.v]();
   var pos = fromPop && positions[location.hash];
   if (pos) { while (L.shown < pos.n && L.shown < L.items.length) renderMore(); window.scrollTo(0, pos.y); }
@@ -431,6 +448,17 @@ view.addEventListener('click', function (e) {
     var th = themesOf(c.q);
     Array.prototype.forEach.call(c.el.querySelectorAll('input[data-k="tema"]'), function (i) { i.checked = th.indexOf(i.value) > -1; });
     t.disabled = true; refreshMeta(c); fillFilters(); syncControls(); updateDataStats();
+  }
+  else if (act === 'link' && c) {
+    var url = location.href.split('#')[0] + buildHash('buscar', { cita: c.q.i });
+    copyText(url, function (ok) { toast(ok ? 'Enlace copiado' : 'No se pudo copiar'); });
+  }
+  else if (act === 'dlfav') {
+    var md = FMT === 'md', body = L.items.map(function (q) { return formatQuote(q, FMT); }).join('\n\n');
+    var blob = new Blob([body + '\n'], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mis-favoritas.' + (md ? 'md' : 'txt');
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    toast('Archivo descargado');
   }
   else if (act === 'moremore') renderMore();
   else if (act === 'next') nextRev();
@@ -494,6 +522,7 @@ function filterChange(k, val) { go(listView(S.v) === S.v || S.v === 'repaso' ? S
 Object.keys(FILTERUI).forEach(function (k) { $(FILTERUI[k]).addEventListener('change', function (e) { filterChange(k, e.target.value); }); });
 $('#fFav').addEventListener('change', function (e) { filterChange('fav', e.target.checked ? '1' : ''); });
 $('#btnClear').addEventListener('click', function () { go(S.v === 'favoritas' || S.v === 'repaso' ? S.v : 'buscar', {}); });
+$('#fOrd').addEventListener('change', function (e) { go(S.v, withP({ ord: e.target.value }), true); });
 $('#fFmt').addEventListener('change', function (e) { FMT = e.target.value; LS.set('fmt', FMT); });
 
 function toggle(btn, panel, other) {
@@ -574,6 +603,9 @@ document.addEventListener('keydown', function (e) {
 });
 
 /* ---------- arranque ---------- */
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
 applyUITheme();
 fillFilters();
 updateDataStats();
