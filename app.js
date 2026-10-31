@@ -702,11 +702,25 @@ $('#btnTheme').addEventListener('click', function () {
 /* exportar / importar */
 $('#btnExport').addEventListener('click', function () {
   var data = { version: 1, fav: Array.from(FAV), uso: USO, usolist: USOLIST, temas: TEMAS, mias: MIAS };
-  var blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
-  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'subrayados-mis-datos.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-  toast('Archivo exportado');
+  var json = JSON.stringify(data, null, 1);
+  function download() {
+    var blob = new Blob([json], { type: 'application/json' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'subrayados-mis-datos.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    toast('Archivo exportado');
+  }
+  /* en el celu: menú de compartir (Archivos, WhatsApp, mail), que anda mejor que la descarga dentro de la app instalada */
+  var touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  try {
+    var file = new File([json], 'subrayados-mis-datos.json', { type: 'application/json' });
+    if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Mis subrayados: mis datos' }).then(function () { toast('Listo'); },
+        function (err) { if (err && err.name !== 'AbortError') download(); });
+      return;
+    }
+  } catch (e) {}
+  download();
 });
 $('#btnImport').addEventListener('click', function () { $('#fileImport').click(); });
 $('#fileImport').addEventListener('change', function (e) {
@@ -773,6 +787,7 @@ document.addEventListener('keydown', function (e) {
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
 }
+if (navigator.storage && navigator.storage.persist) { try { navigator.storage.persist(); } catch (e) {} }
 applyUITheme();
 fillFilters();
 updateDataStats();
