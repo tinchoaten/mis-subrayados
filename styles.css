@@ -217,3 +217,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .tabs { margin-top: 2px; border-bottom: 1px solid var(--line); }
 .status { padding: 4px 0 0; }
 .q { scroll-margin-top: 80px; }
+
+
+/* lecturas */
+.readbar { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
+.linkbtn { background: none; border: 0; padding: 12px 6px; min-height: 44px; color: var(--accent); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

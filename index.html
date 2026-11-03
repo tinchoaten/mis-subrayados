@@ -52,6 +52,10 @@
         <label>Apariencia <button type="button" class="btn" id="btnTheme" aria-label="Cambiar tema de color">Auto</button></label>
       </div>
 
+      <h3 class="sec">Lecturas</h3>
+      <p class="muted small" id="readStats"></p>
+      <div class="row"><button class="btn" id="btnResetRead">Empezar de cero</button></div>
+
       <h3 class="sec">Mis datos</h3>
       <p class="muted small">Tus marcas se guardan en este navegador. Con la sincronización conectada, también se comparten entre tus dispositivos. Si no, exportá una copia para respaldarlas.</p>
       <p class="muted small" id="dataStats"></p>
@@ -85,6 +89,7 @@
           </select>
         </label>
         <label class="check"><input type="checkbox" id="fFav"> Solo favoritas ★</label>
+        <label class="check"><input type="checkbox" id="fNoleidas"> Solo las que no leí</label>
         <label class="check"><input type="checkbox" id="fMias"> Solo las que agregué</label>
       </div>
       <div class="row"><button class="btn pri" id="btnFiltersDone">Ver resultados</button><button class="btn" id="btnClear">Limpiar filtros</button></div>

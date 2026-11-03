@@ -33,6 +33,8 @@ function saveMias() { LS.set('mias', MIAS); }
 var SYNC_URL = LS.get('syncurl', 'https://subrayados-sync.juanmartinatencio.workers.dev/sync');   // 'syncurl' solo se usa para pruebas
 var SYNC = { key: LS.get('synckey', ''), busy: false, dirty: false, last: LS.get('lastsync', 0), err: '' };
 var TS = LS.get('ts', {});
+var LEIDAS = LS.get('leidas', {});       // id -> segundos (positivo: leída; negativo: marcada como no leída)
+var RESETT = LS.get('lreset', 0);        // las lecturas anteriores a este momento no cuentan
 var syncT;
 function saveTS() { LS.set('ts', TS); }
 function touch(key) { TS[key] = Date.now(); saveTS(); scheduleSync(); }
@@ -172,7 +174,7 @@ function usoOf(q) { return USO[q.i] || []; }
 
 /* ---------- estado en la URL ---------- */
 var VIEWS = ['buscar', 'libros', 'temas', 'autores', 'favoritas', 'repaso', 'agregar'];
-var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias', 'borradas', 'ord', 'adivinar', 'c'];
+var KEYS = ['q', 'libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias', 'borradas', 'leidas', 'noleidas', 'ord', 'adivinar', 'c'];
 var S = { v: 'buscar', p: {} };
 var positions = {}, curHash = null;
 
@@ -210,6 +212,8 @@ function applyFilters(p, useQ, forceFav) {
   return (p.borradas ? Object.keys(HIDDEN).map(function (k) { return HIDDEN[k]; }) : ALL).filter(function (q) {
     if (p.cita && q.i !== p.cita) return false;
     if (p.mias && !q.mia) return false;
+    if (p.leidas && !isRead(q.i)) return false;
+    if (p.noleidas && isRead(q.i)) return false;
     if (p.libro && q.b.i !== p.libro) return false;
     if (p.cat && q.b.c !== p.cat) return false;
     if (p.tema && themesOf(q).indexOf(p.tema) < 0) return false;
@@ -326,6 +330,7 @@ function morePanel(q) {
   var u = usoOf(q), th = themesOf(q);
   if (q.del) return '<div class="more"><p>Esta cita está borrada en este navegador.</p><p class="row"><button class="btn pri" data-act="restore">Restaurar</button></p></div>';
   return '<div class="more">' +
+    '<p class="row"><button class="btn" data-act="toggleread">' + (isRead(q.i) ? 'Marcar como no leída' : 'Marcar como leída') + '</button></p>' +
     '<h3>Para qué la usás</h3><div class="opts">' + USOLIST.map(function (x) { return optHTML('uso', x, u.indexOf(x) > -1); }).join('') + '</div>' +
     '<form class="newuso"><input placeholder="Nueva etiqueta…" aria-label="Nueva etiqueta de uso" maxlength="30"><button class="btn">Agregar</button></form>' +
     '<h3>Temas</h3><div class="opts">' + TK.map(function (k) { return optHTML('tema', k, th.indexOf(k) > -1, THEMES[k]); }).join('') + '</div>' +
@@ -344,6 +349,7 @@ function renderMore(all) {
   for (var i = L.shown; i < end; i++) html += cardHTML(L.items[i], L.terms);
   list.insertAdjacentHTML('beforeend', html);
   L.shown = end;
+  watchCards();
   var btn = $('#moreBtn');
   if (btn) { if (L.shown >= L.items.length) { btn.remove(); if (io) io.disconnect(); } else btn.textContent = 'Mostrar más (' + nf(L.items.length - L.shown) + ' restantes)'; }
 }
@@ -369,6 +375,7 @@ function emptyHTML() {
 function setCount(t) { $('#count').textContent = t; }
 
 function viewBuscar() {
+  if (!hasFilters() && !S.p.ord) return viewHome();
   var items = sortItems(applyFilters(S.p, true), S.p.ord);
   var n = items.length;
   setCount(S.p.borradas ? plural(n, 'cita borrada', 'citas borradas') : hasFilters() ? plural(n, 'resultado', 'resultados') + ' de ' + nf(ALL.length) : plural(n, 'cita', 'citas'));
@@ -499,6 +506,7 @@ function viewRepaso() {
   L = { items: [q], shown: 1, terms: [] };
   view.innerHTML = tools + '<div id="list">' + cardHTML(q, [], { hide: guess && !revealed[q.i] }) + '</div>' +
     '<div class="row"><button class="btn pri" data-act="next">Otra cita</button></div></div>';
+  watchCards();
 }
 var revealed = {};
 function nextRev() {
@@ -529,6 +537,7 @@ function syncControls() {
   Object.keys(FILTERUI).forEach(function (k) { $(FILTERUI[k]).value = S.p[k] || ''; });
   $('#fFav').checked = !!S.p.fav;
   $('#fMias').checked = !!S.p.mias;
+  $('#fNoleidas').checked = !!S.p.noleidas;
   var qi = $('#q'); if (!typing) qi.value = S.p.q || '';
   Array.prototype.forEach.call(document.querySelectorAll('#tabs a'), function (a) {
     if (a.dataset.v === S.v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -541,6 +550,8 @@ function syncControls() {
     if (S.p.cita) chip('cita', 'Una cita: ' + S.p.cita);
     if (S.p.mias) chip('mias', 'Agregadas por mí');
     if (S.p.borradas) chip('borradas', 'Citas borradas');
+    if (S.p.leidas) chip('leidas', 'Solo leídas');
+    if (S.p.noleidas) chip('noleidas', 'Solo no leídas');
     if (S.p.libro && BOOKS[S.p.libro]) chip('libro', BOOKS[S.p.libro].t);
     if (S.p.tema && THEMES[S.p.tema]) chip('tema', THEMES[S.p.tema]);
     if (S.p.autor) chip('autor', S.p.autor);
@@ -549,13 +560,14 @@ function syncControls() {
     if (S.p.fav && S.v !== 'favoritas') chip('fav', 'Solo favoritas');
   }
   $('#chips').innerHTML = chips;
-  var n = ['libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias'].filter(function (k) { return S.p[k]; }).length;
+  var n = ['libro', 'tema', 'autor', 'uso', 'cat', 'fav', 'cita', 'mias', 'noleidas', 'leidas'].filter(function (k) { return S.p[k]; }).length;
   $('#btnFilters').textContent = n ? 'Filtros (' + n + ')' : 'Filtros';
 }
 function updateDataStats() {
   $('#dataStats').textContent = 'Favoritas: ' + FAV.size + ' · citas con etiqueta de uso: ' + Object.keys(USO).length + ' · citas con temas corregidos: ' + Object.keys(TEMAS).length + ' · citas agregadas desde el celu: ' + MIAS.length;
   var nb = OCULTAS.length;
   $('#dataDel').innerHTML = nb ? 'Citas borradas en este navegador: ' + nb + ' · <a href="#/buscar?borradas=1">Ver y restaurar</a>' : '';
+  $('#readStats').textContent = 'Leíste ' + nf(countRead()) + ' de ' + nf(ALL.length) + ' citas. Se marcan solas cuando las tenés unos segundos en pantalla.';
   renderSync();
 }
 function applyUITheme() {
@@ -625,7 +637,7 @@ view.addEventListener('click', function (e) {
   if (act === 'fav' && c) doFav(c);
   else if (act === 'copy' && c) doCopy(c);
   else if (act === 'more' && c) doMore(c);
-  else if (act === 'reveal' && c) { revealed[c.q.i] = true; c.el.outerHTML = cardHTML(c.q, [], {}); }
+  else if (act === 'reveal' && c) { revealed[c.q.i] = true; c.el.outerHTML = cardHTML(c.q, [], {}); watchCards(); }
   else if (act === 'resettemas' && c) {
     delete TEMAS[c.q.i]; saveMarks(); touch('temas:' + c.q.i);
     var th = themesOf(c.q);
@@ -661,6 +673,13 @@ view.addEventListener('click', function (e) {
       setTimeout(function () { if (t.isConnected) { delete t.dataset.sure; t.textContent = 'Borrar esta cita'; } }, 4000);
     }
   }
+  else if (act === 'toggleread' && c) {
+    if (isRead(c.q.i)) { markUnread(c.q.i); t.textContent = 'Marcar como leída'; toast('Marcada como no leída'); }
+    else { markRead(c.q.i); t.textContent = 'Marcar como no leída'; toast('Marcada como leída'); }
+    updateDataStats();
+  }
+  else if (act === 'verleidas') go('buscar', { leidas: '1' });
+  else if (act === 'reiniciar') resetRead();
   else if (act === 'restore' && c) {
     var rq = c.q; restoreQuote(rq); touch('oculta:' + rq.i); fillFilters(); updateDataStats();
     var rx = L.items.indexOf(rq); if (rx > -1) { L.items.splice(rx, 1); L.shown = Math.max(0, L.shown - 1); }
@@ -732,6 +751,7 @@ $('#q').addEventListener('input', function (e) {
 function filterChange(k, val) { go(listView(S.v) === S.v || S.v === 'repaso' ? S.v : 'buscar', withP((function (o) { o[k] = val; o.c = ''; return o; })({}))); }
 Object.keys(FILTERUI).forEach(function (k) { $(FILTERUI[k]).addEventListener('change', function (e) { filterChange(k, e.target.value); }); });
 $('#fMias').addEventListener('change', function (e) { filterChange('mias', e.target.checked ? '1' : ''); });
+$('#fNoleidas').addEventListener('change', function (e) { filterChange('noleidas', e.target.checked ? '1' : ''); });
 $('#fFav').addEventListener('change', function (e) { filterChange('fav', e.target.checked ? '1' : ''); });
 $('#btnClear').addEventListener('click', function () { go(S.v === 'favoritas' || S.v === 'repaso' ? S.v : 'buscar', {}); });
 $('#fOrd').addEventListener('change', function (e) { go(S.v, withP({ ord: e.target.value }), true); });
@@ -845,6 +865,71 @@ document.addEventListener('keydown', function (e) {
   }
 });
 
+/* ---------- lecturas: qué citas ya leíste ---------- */
+function nowSec() { return Math.floor(Date.now() / 1000); }
+function saveLeidas() { LS.set('leidas', LEIDAS); LS.set('lreset', RESETT); }
+function isRead(id) { var t = LEIDAS[id]; return t > 0 && t > RESETT; }
+function markRead(id) { if (isRead(id)) return; LEIDAS[id] = nowSec(); saveLeidas(); touch('leidas'); }
+function markUnread(id) { LEIDAS[id] = -nowSec(); saveLeidas(); touch('leidas'); }
+function countRead() { var n = 0; for (var i = 0; i < ALL.length; i++) if (isRead(ALL[i].i)) n++; return n; }
+function resetRead() {
+  LEIDAS = {}; RESETT = nowSec(); HOMEORDER = null; saveLeidas(); touch('lreset'); touch('leidas');
+  updateDataStats(); toast('Registro de lecturas reiniciado');
+  if (S.v === 'buscar' && !hasFilters() && !S.p.ord) route(false);
+}
+/* orden al azar, estable mientras dura la sesión */
+function shuffled(arr, seed) {
+  var a = arr.slice(), s = seed | 0;
+  function rnd() { s = (s + 0x6D2B79F5) | 0; var t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; }
+  return a;
+}
+var HOMEORDER = null, SEED = (Math.random() * 4294967296) >>> 0;
+function viewHome() {
+  if (!HOMEORDER) HOMEORDER = shuffled(ALL.filter(function (q) { return !isRead(q.i); }).map(function (q) { return q.i; }), SEED);
+  var items = HOMEORDER.map(function (id) { return BYID[id]; }).filter(function (q) { return q && !q.del; });
+  var total = ALL.length, leidas = countRead();
+  setCount('');
+  var head = '<p class="readbar" role="status" aria-live="polite">Ya leíste ' + nf(leidas) + ' de ' + nf(total) + (leidas ? ' · <button class="linkbtn" data-act="verleidas">Ver leídas</button>' : '') + '</p>';
+  if (!items.length) {
+    L = { items: [], shown: 0, terms: [] };
+    view.innerHTML = head + '<div class="empty"><p>¡Leíste todas las citas!</p><button class="btn pri" data-act="reiniciar">Empezar de nuevo</button></div>';
+    return;
+  }
+  showList(items, [], head);
+}
+/* una cita cuenta como leída cuando estuvo unos segundos en pantalla */
+var ioRead = null, readTimers = new WeakMap();
+function watchCards() {
+  if (!('IntersectionObserver' in window)) return;
+  if (!ioRead) ioRead = new IntersectionObserver(function (es) {
+    es.forEach(function (en) {
+      var el = en.target, ok = en.isIntersecting && en.intersectionRect.height >= Math.min(en.boundingClientRect.height * 0.6, window.innerHeight * 0.5);
+      if (ok) {
+        if (readTimers.has(el)) return;
+        readTimers.set(el, setTimeout(function () { readTimers.delete(el); if (document.visibilityState === 'visible') markRead(el.dataset.i); }, 3000));
+      } else if (readTimers.has(el)) { clearTimeout(readTimers.get(el)); readTimers.delete(el); }
+    });
+  }, { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] });
+  Array.prototype.forEach.call(view.querySelectorAll('.q'), function (el) { if (!el.dataset.w) { el.dataset.w = '1'; ioRead.observe(el); } });
+}
+var hiddenAt = 0;
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000) {   // volvés después de un rato: lista nueva con lo que falta leer
+    HOMEORDER = null;
+    var a = document.activeElement;
+    if (S.v === 'buscar' && !hasFilters() && !S.p.ord && !(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) route(false);
+  }
+  hiddenAt = 0;
+});
+$('#btnResetRead').addEventListener('click', function (e) {
+  var b = e.currentTarget;
+  if (b.dataset.sure) { delete b.dataset.sure; b.textContent = 'Empezar de cero'; resetRead(); return; }
+  b.dataset.sure = '1'; b.textContent = 'Tocá otra vez para borrar el registro';
+  setTimeout(function () { if (b.dataset.sure) { delete b.dataset.sure; b.textContent = 'Empezar de cero'; } }, 4000);
+});
+
 /* ---------- sincronización entre dispositivos ---------- */
 function localEntry(k) {
   var i = k.indexOf(':'), kind = i < 0 ? k : k.slice(0, i), id = k.slice(i + 1);
@@ -854,6 +939,8 @@ function localEntry(k) {
   if (kind === 'usolist') return USOLIST;
   if (kind === 'mia') return MIAS.filter(function (m) { return m.id === id; })[0] || null;
   if (kind === 'oculta') return OCULTAS.indexOf(id) > -1;
+  if (kind === 'leidas') return LEIDAS;
+  if (kind === 'lreset') return RESETT;
   return null;
 }
 function localEntries() {
@@ -868,11 +955,13 @@ function allMarkKeys() {
   Object.keys(TEMAS).forEach(function (id) { ks.push('temas:' + id); });
   MIAS.forEach(function (m) { ks.push('mia:' + m.id); });
   OCULTAS.forEach(function (id) { ks.push('oculta:' + id); });
+  if (Object.keys(LEIDAS).length) ks.push('leidas');
+  if (RESETT) ks.push('lreset');
   return ks;
 }
 function touchAll() { var t = Date.now(); allMarkKeys().forEach(function (k) { TS[k] = t; }); saveTS(); scheduleSync(); }
 function applyRemote(entries) {
-  var changed = false;
+  var changed = false, reup = false;
   Object.keys(entries).forEach(function (k) {
     var e = entries[k];
     if (!e || typeof e.t !== 'number' || e.t <= (TS[k] || 0)) return;
@@ -882,6 +971,14 @@ function applyRemote(entries) {
     else if (kind === 'uso') { if (v && v.length) USO[id] = v; else delete USO[id]; }
     else if (kind === 'temas') { if (v) TEMAS[id] = v; else delete TEMAS[id]; }
     else if (kind === 'usolist') { if (v && v.length) USOLIST = v; }
+    else if (kind === 'lreset') {
+      if (v > RESETT) { RESETT = v; Object.keys(LEIDAS).forEach(function (x) { if (Math.abs(LEIDAS[x]) <= RESETT) delete LEIDAS[x]; }); }
+    }
+    else if (kind === 'leidas') {
+      var rm = v || {};
+      Object.keys(rm).forEach(function (x) { var tt = rm[x]; if (Math.abs(tt) <= RESETT) return; if (Math.abs(tt) > Math.abs(LEIDAS[x] || 0)) LEIDAS[x] = tt; });
+      Object.keys(LEIDAS).forEach(function (x) { if (!(x in rm) || Math.abs(LEIDAS[x]) > Math.abs(rm[x])) reup = true; });
+    }
     else if (kind === 'oculta') {
       var q = BYID[id];
       if (q && !q.mia) { if (v && !q.del) hideQuote(q); else if (!v && q.del) restoreQuote(q); }
@@ -896,7 +993,8 @@ function applyRemote(entries) {
       }
     }
   });
-  if (changed) { saveTS(); saveMarks(); saveMias(); refreshAuthors(); }
+  if (changed) { saveLeidas(); saveTS(); saveMarks(); saveMias(); refreshAuthors(); }
+  if (reup) touch('leidas');
   return changed;
 }
 function ago(ms) {
