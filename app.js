@@ -33,6 +33,7 @@ function saveMias() { LS.set('mias', MIAS); }
 var SYNC_URL = LS.get('syncurl', 'https://subrayados-sync.juanmartinatencio.workers.dev/sync');   // 'syncurl' solo se usa para pruebas
 var SYNC = { key: LS.get('synckey', ''), busy: false, dirty: false, last: LS.get('lastsync', 0), err: '' };
 var TS = LS.get('ts', {});
+var APP_VER = 'v10';
 var SUGS = LS.get('sugs', null);         // lote de frases sugeridas (llega desde la nube)
 var SUGF = LS.get('sugf', {});           // id de frase -> 'vista' | 'guardada' | 'otra' | 'no'
 var SUGD = LS.get('sugdia', { fecha: '', id: '', cerrada: false });   // frase de hoy en este dispositivo
@@ -568,6 +569,7 @@ function syncControls() {
 }
 function updateDataStats() {
   $('#dataStats').textContent = 'Favoritas: ' + FAV.size + ' · citas con etiqueta de uso: ' + Object.keys(USO).length + ' · citas con temas corregidos: ' + Object.keys(TEMAS).length + ' · citas agregadas desde el celu: ' + MIAS.length;
+  var vi = $('#verInfo'); if (vi) vi.textContent = 'Versión ' + APP_VER + ' · frases sugeridas: ' + (SUGS && SUGS.items ? SUGS.lote + ' (' + SUGS.items.length + ')' : 'sin lote') + ' · hoy: ' + (SUGD.id || '—') + (SUGD.cerrada ? ' (cerrada)' : '');
   var nb = OCULTAS.length;
   $('#dataDel').innerHTML = nb ? 'Citas borradas en este navegador: ' + nb + ' · <a href="#/buscar?borradas=1">Ver y restaurar</a>' : '';
   $('#readStats').textContent = 'Leíste ' + nf(countRead()) + ' de ' + nf(ALL.length) + ' citas. Se marcan solas cuando las tenés unos segundos en pantalla.';
