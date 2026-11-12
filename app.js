@@ -1029,6 +1029,10 @@ function applyRemote(entries) {
   var changed = false, reup = false;
   Object.keys(entries).forEach(function (k) {
     var e = entries[k];
+    if (k === 'sug') {   // el lote de frases no depende de la hora: se toma si es otro distinto del que ya tenemos
+      if (e && e.v && e.v.items && (!SUGS || SUGS.lote !== e.v.lote)) { SUGS = e.v; changed = true; }
+      return;
+    }
     if (!e || typeof e.t !== 'number' || e.t <= (TS[k] || 0)) return;
     TS[k] = e.t; changed = true;
     var i = k.indexOf(':'), kind = i < 0 ? k : k.slice(0, i), id = k.slice(i + 1), v = e.v;
