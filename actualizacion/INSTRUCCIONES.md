@@ -65,6 +65,19 @@ El resultado tiene el mismo formato que el archivo exportado (`mias`, `ocultas`,
 - Después de consolidar, no hace falta limpiar la nube: los dispositivos ignoran los borrados de citas que ya no existen y ocultan solos las citas agregadas que ya están en `data.js`.
 - Nunca imprimas ni copies la clave en mensajes, commits ni archivos que se suban.
 
+## Frases sugeridas (renovar el lote)
+
+El sitio muestra una vez por día, arriba de la lista principal, una frase sugerida (con "Guardar", "Otra", "No me interesa" y una X para cerrarla). Las frases salen de un **lote** que se guarda en la nube privada de Juan (no en el repo). Cuando se acaben o Juan pida más, armá un lote nuevo:
+
+1. **Leé el gusto de Juan:** `node actualizacion/leer-nube.js` (campos `fav` y `sugf`: `guardada` = le gustó, `no` = no le interesó, `otra` = la salteó) y los temas, autores y favoritas de `data.js`. Priorizá lo que guardó o marcó favorito; evitá lo que descartó. Mezclá más o menos un 20% de temas o autores nuevos para que no sea siempre lo mismo.
+2. **Proponé candidatos** en `actualizacion/sugerencias/candidatos.json` (autor, obra, página de Wikiquote, un fragmento de la frase, temas). Autores afines, frases cortas y con obra conocida.
+3. **Verificá cada una:** `node actualizacion/sugerencias/verificar.js candidatos.json > verificadas.json`. Descartá las que no aparezcan en la fuente. **No uses paráfrasis ni frases "atribuidas a"**: la página tiene que citar el texto como del autor.
+4. **Traducí** las que estén en otro idioma (marcá `"tr": 1` y guardá el original en `"e"`; en la tarjeta se ve "traducción propia"). Las que están en español van tal cual.
+5. **Armá el lote** `actualizacion/sugerencias/lote-N.json` con la forma `{ "lote": "L2-AAAA-MM", "generado": "AAAA-MM-DD", "items": [ { "id": "S2-nombre", "x": "texto", "a": "autor", "o": "obra", "u": "enlace a la fuente", "t": ["ia","dec"], "p": "Porque subrayás sobre …", "tr": 1, "e": "original" } ] }`. Los ids tienen que ser únicos y distintos de los de lotes anteriores (cambiá el prefijo `S1-`, `S2-`…). Entre 25 y 40 frases, mezcladas.
+6. **Publicalo:** `node actualizacion/sugerencias/publicar.js actualizacion/sugerencias/lote-N.json`. Reemplaza al lote anterior; las respuestas de Juan se conservan por id.
+
+Reglas: nunca inventes ni "mejores" una cita; si no la podés verificar, no va. Los `lote-*.json` están ignorados por git (no se suben). Si Juan guarda una sugerencia, queda como cita suya pendiente (con la fuente en la nota): al consolidar, tratala como las otras citas agregadas.
+
 ## Flujo (seguilo en este orden)
 
 1. **Pedí el archivo** si Juan no lo pasó. Ruta habitual: `C:\Users\tinch\Downloads\My Clippings.txt`. Preguntale también si tiene citas cargadas desde el celu (`subrayados-mis-datos.json`).

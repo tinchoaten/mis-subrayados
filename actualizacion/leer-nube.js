@@ -19,7 +19,7 @@ if (!key) { console.error('Falta la clave: definí SYNC_KEY o creá sync-clave.t
 fetch(URL_SYNC, { method: 'POST', headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' }, body: '{"entries":{}}' })
   .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(function (d) {
-    var out = { mias: [], ocultas: [], fav: [], uso: {}, temas: {} };
+    var out = { mias: [], ocultas: [], fav: [], uso: {}, temas: {}, sugf: {} };
     Object.keys(d.entries).forEach(function (k) {
       var e = d.entries[k], i = k.indexOf(':'), kind = i < 0 ? k : k.slice(0, i), id = k.slice(i + 1);
       if (kind === 'mia' && e.v) out.mias.push(e.v);
@@ -27,6 +27,7 @@ fetch(URL_SYNC, { method: 'POST', headers: { authorization: 'Bearer ' + key, 'co
       else if (kind === 'fav' && e.v) out.fav.push(id);
       else if (kind === 'uso' && e.v && e.v.length) out.uso[id] = e.v;
       else if (kind === 'temas' && e.v) out.temas[id] = e.v;
+      else if (kind === 'sugf' && e.v) out.sugf[id] = e.v;
     });
     process.stdout.write(JSON.stringify(out, null, 1) + '\n');
     console.error('Nube: ' + out.mias.length + ' citas agregadas, ' + out.ocultas.length + ' borradas, ' + out.fav.length + ' favoritas.');

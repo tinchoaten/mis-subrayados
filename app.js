@@ -33,6 +33,9 @@ function saveMias() { LS.set('mias', MIAS); }
 var SYNC_URL = LS.get('syncurl', 'https://subrayados-sync.juanmartinatencio.workers.dev/sync');   // 'syncurl' solo se usa para pruebas
 var SYNC = { key: LS.get('synckey', ''), busy: false, dirty: false, last: LS.get('lastsync', 0), err: '' };
 var TS = LS.get('ts', {});
+var SUGS = LS.get('sugs', null);         // lote de frases sugeridas (llega desde la nube)
+var SUGF = LS.get('sugf', {});           // id de frase -> 'vista' | 'guardada' | 'otra' | 'no'
+var SUGD = LS.get('sugdia', { fecha: '', id: '', cerrada: false });   // frase de hoy en este dispositivo
 var LEIDAS = LS.get('leidas', {});       // id -> segundos (positivo: leída; negativo: marcada como no leída)
 var RESETT = LS.get('lreset', 0);        // las lecturas anteriores a este momento no cuentan
 var syncT;
@@ -678,6 +681,15 @@ view.addEventListener('click', function (e) {
     else { markRead(c.q.i); t.textContent = 'Marcar como no leída'; toast('Marcada como leída'); }
     updateDataStats();
   }
+  else if (act === 'sug-cerrar') { SUGD.cerrada = true; saveSug(); refreshSug(); }
+  else if (act === 'sug-no') { if (SUGD.id) sugSetF(SUGD.id, 'no'); SUGD.cerrada = true; saveSug(); refreshSug(); toast('Listo, te sugeriré cosas distintas'); }
+  else if (act === 'sug-otra') {
+    var cur = SUGD.id; if (cur) sugSetF(cur, 'otra');
+    var nx = sugNext(cur);
+    if (nx) { SUGD = { fecha: hoy(), id: nx.id, cerrada: false }; sugSetF(nx.id, 'vista'); } else { SUGD.cerrada = true; toast('No quedan más sugerencias por ahora'); }
+    saveSug(); refreshSug();
+  }
+  else if (act === 'sug-guardar') sugGuardar();
   else if (act === 'verleidas') go('buscar', { leidas: '1' });
   else if (act === 'reiniciar') resetRead();
   else if (act === 'restore' && c) {
@@ -890,7 +902,7 @@ function viewHome() {
   var items = HOMEORDER.map(function (id) { return BYID[id]; }).filter(function (q) { return q && !q.del; });
   var total = ALL.length, leidas = countRead();
   setCount('');
-  var head = '<p class="readbar" role="status" aria-live="polite">Ya leíste ' + nf(leidas) + ' de ' + nf(total) + (leidas ? ' · <button class="linkbtn" data-act="verleidas">Ver leídas</button>' : '') + '</p>';
+  var head = sugCard() + '<p class="readbar" role="status" aria-live="polite">Ya leíste ' + nf(leidas) + ' de ' + nf(total) + (leidas ? ' · <button class="linkbtn" data-act="verleidas">Ver leídas</button>' : '') + '</p>';
   if (!items.length) {
     L = { items: [], shown: 0, terms: [] };
     view.innerHTML = head + '<div class="empty"><p>¡Leíste todas las citas!</p><button class="btn pri" data-act="reiniciar">Empezar de nuevo</button></div>';
@@ -930,6 +942,57 @@ $('#btnResetRead').addEventListener('click', function (e) {
   setTimeout(function () { if (b.dataset.sure) { delete b.dataset.sure; b.textContent = 'Empezar de cero'; } }, 4000);
 });
 
+/* ---------- frase sugerida del día ---------- */
+function hoy() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function saveSug() { LS.set('sugs', SUGS); LS.set('sugf', SUGF); LS.set('sugdia', SUGD); }
+function sugItem(id) { return SUGS && SUGS.items ? SUGS.items.filter(function (x) { return x.id === id; })[0] : null; }
+function sugNext(exceptId) {
+  if (!SUGS || !SUGS.items) return null;
+  return SUGS.items.filter(function (x) { return !SUGF[x.id] && x.id !== exceptId; })[0] || null;
+}
+function sugSetF(id, v) { SUGF[id] = v; saveSug(); touch('sugf:' + id); }
+function sugCard() {
+  if (!SUGS || !SUGS.items) return '';
+  var h = hoy();
+  if (SUGD.fecha !== h) {   // primera vez del día: se elige una frase que no se mostró antes
+    var n = sugNext();
+    SUGD = { fecha: h, id: n ? n.id : '', cerrada: !n };
+    if (n) sugSetF(n.id, 'vista');
+    saveSug();
+  }
+  if (SUGD.cerrada || !SUGD.id) return '';
+  var it = sugItem(SUGD.id); if (!it) return '';
+  var fuente = esc(it.a) + (it.o ? ', <i>' + esc(it.o) + '</i>' : '') + (it.tr ? ' · traducción propia' : '') +
+    ' · <a href="' + esc(it.u) + '" target="_blank" rel="noopener noreferrer">ver fuente</a>';
+  return '<aside class="sug" aria-label="Frase sugerida para hoy">' +
+    '<button class="sug-x" data-act="sug-cerrar" aria-label="Cerrar la sugerencia">×</button>' +
+    '<p class="sug-k">Una sugerencia para hoy</p>' +
+    '<blockquote><p>' + esc(it.x) + '</p></blockquote>' +
+    '<p class="src">' + fuente + '</p>' +
+    (it.p ? '<p class="sug-why">' + esc(it.p) + '</p>' : '') +
+    '<div class="acts"><button class="btn copy" data-act="sug-guardar">Guardar</button><button class="btn" data-act="sug-otra">Otra</button><button class="btn" data-act="sug-no">No me interesa</button></div>' +
+    '</aside>';
+}
+function refreshSug() {
+  var el = $('.sug'); if (!el) return;
+  var html = sugCard();
+  if (html) el.outerHTML = html; else el.remove();
+}
+function sugGuardar() {
+  var it = sugItem(SUGD.id); if (!it) return;
+  var dup = findDup(it.x);
+  if (!dup) {
+    var now = new Date(), b = matchBook(it.o || '');
+    var rec = { id: 'M-' + Date.now().toString(36), x: it.x, t: it.o || 'Citas sugeridas', a: it.a, g: '',
+                n: ['Fuente: ' + it.u + (it.tr ? ' (traducción propia)' : '')],
+                d: now.getDate() + ' ' + MES3[now.getMonth()] + ' ' + now.getFullYear(), iso: now.toISOString() };
+    if (b && !b.virtual) { rec.bc = b.i; rec.t = b.t; }
+    MIAS.push(rec); saveMias(); touch('mia:' + rec.id); indexMia(rec); refreshAuthors(); fillFilters(); updateDataStats();
+  }
+  sugSetF(it.id, 'guardada'); SUGD.cerrada = true; saveSug(); refreshSug();
+  toast(dup ? 'Ya la tenías (' + dup.i + ')' : 'Guardada en tus citas');
+}
+
 /* ---------- sincronización entre dispositivos ---------- */
 function localEntry(k) {
   var i = k.indexOf(':'), kind = i < 0 ? k : k.slice(0, i), id = k.slice(i + 1);
@@ -940,12 +1003,13 @@ function localEntry(k) {
   if (kind === 'mia') return MIAS.filter(function (m) { return m.id === id; })[0] || null;
   if (kind === 'oculta') return OCULTAS.indexOf(id) > -1;
   if (kind === 'leidas') return LEIDAS;
+  if (kind === 'sugf') return SUGF[id] || null;
   if (kind === 'lreset') return RESETT;
   return null;
 }
 function localEntries() {
   var o = {};
-  Object.keys(TS).forEach(function (k) { o[k] = { v: localEntry(k), t: TS[k] }; });
+  Object.keys(TS).forEach(function (k) { if (k !== 'sug') o[k] = { v: localEntry(k), t: TS[k] }; });
   return o;
 }
 function allMarkKeys() {
@@ -957,6 +1021,7 @@ function allMarkKeys() {
   OCULTAS.forEach(function (id) { ks.push('oculta:' + id); });
   if (Object.keys(LEIDAS).length) ks.push('leidas');
   if (RESETT) ks.push('lreset');
+  Object.keys(SUGF).forEach(function (id) { ks.push('sugf:' + id); });
   return ks;
 }
 function touchAll() { var t = Date.now(); allMarkKeys().forEach(function (k) { TS[k] = t; }); saveTS(); scheduleSync(); }
@@ -971,6 +1036,8 @@ function applyRemote(entries) {
     else if (kind === 'uso') { if (v && v.length) USO[id] = v; else delete USO[id]; }
     else if (kind === 'temas') { if (v) TEMAS[id] = v; else delete TEMAS[id]; }
     else if (kind === 'usolist') { if (v && v.length) USOLIST = v; }
+    else if (kind === 'sug') { if (v && v.items) SUGS = v; }
+    else if (kind === 'sugf') { if (v) SUGF[id] = v; else delete SUGF[id]; }
     else if (kind === 'lreset') {
       if (v > RESETT) { RESETT = v; Object.keys(LEIDAS).forEach(function (x) { if (Math.abs(LEIDAS[x]) <= RESETT) delete LEIDAS[x]; }); }
     }
@@ -993,7 +1060,7 @@ function applyRemote(entries) {
       }
     }
   });
-  if (changed) { saveLeidas(); saveTS(); saveMarks(); saveMias(); refreshAuthors(); }
+  if (changed) { saveLeidas(); saveSug(); saveTS(); saveMarks(); saveMias(); refreshAuthors(); }
   if (reup) touch('leidas');
   return changed;
 }

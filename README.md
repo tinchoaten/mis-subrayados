@@ -55,6 +55,7 @@ Los códigos de las citas (por ejemplo `PC-12`) se mantienen y coinciden con el 
 - **Borrar una cita**: en *Más → Borrar esta cita* (dos toques). Se oculta en tu navegador y la podés restaurar desde *Mis datos → Ver y restaurar*. Para sacarla del sitio publicado, exportá y pasale el archivo a Claude.
 - **Sincronización entre dispositivos**: en *Mis datos → Sincronización* pegás tu clave (o abrís el enlace de conexión) y favoritas, etiquetas, citas agregadas y borradas se comparten solas entre el celu y las compus. Si no hay conexión, todo sigue funcionando y se sincroniza al volver.
 - **Lecturas**: cada cita se marca como leída sola cuando la tenés unos segundos en pantalla. La pantalla principal te muestra primero las que no leíste, mezcladas al azar, y arriba dice cuántas ya leíste con un botón para verlas. Podés marcar o desmarcar una a mano desde *Más*, filtrar por "no leídas" y empezar de cero desde *Menú → Lecturas*. Se sincroniza entre dispositivos.
+- **Frase sugerida del día**: una vez por día, arriba de la lista, aparece una frase con su fuente, elegida según tus temas, autores y favoritas. Podés **guardarla** en tus citas, pedir **otra**, decir **no me interesa** (así las próximas se ajustan) o cerrarla con la X. Se renueva con un lote nuevo cuando se acaban.
 - **Orden**: por defecto como en el libro; también por fecha de lectura (más recientes primero) o por título.
 - **Enlace a una cita**: en *Más → Copiar enlace a esta cita*.
 - **Favoritas**: *Copiar todas* o *Descargar* (`.md` o `.txt`, según el formato elegido).

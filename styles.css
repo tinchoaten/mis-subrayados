@@ -222,3 +222,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* lecturas */
 .readbar { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
 .linkbtn { background: none; border: 0; padding: 12px 6px; min-height: 44px; color: var(--accent); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+
+/* frase sugerida del día */
+.sug { position: relative; margin: 12px 0 6px; padding: 10px 8px 2px 16px; border-left: 2px solid var(--accent); }
+.sug-k { margin: 0 44px 6px 0; font: 600 .75rem var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.sug blockquote { font-size: 1.05rem; }
+.sug-why { margin: 4px 0 0; font-size: .8rem; color: var(--muted); }
+.sug-x { position: absolute; top: 0; right: 0; width: 44px; height: 44px; background: none; border: 0; color: var(--muted); font: 1.6rem/1 var(--sans); cursor: pointer; }
+.sug-x:hover { color: var(--fg); }
+.sug .acts { flex-wrap: wrap; }

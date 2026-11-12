@@ -13,6 +13,10 @@ Hablale en español rioplatense (voseo). Sé breve.
 
 El sitio sincroniza las marcas de Juan con un Worker propio (`sync/worker.js`, en su cuenta de Cloudflare). La clave de sincronización vive en `sync-clave.txt` (ignorado por git). **Nunca la imprimas ni la subas.** Para leer lo pendiente: `node actualizacion/leer-nube.js`.
 
+## Frases sugeridas
+
+El sitio muestra una frase por día desde un lote guardado en la nube (privado). Para renovarlo seguí la sección "Frases sugeridas" de `actualizacion/INSTRUCCIONES.md`. Cada frase tiene que estar verificada contra una fuente que la cite textualmente.
+
 ## Si Juan trae citas nuevas
 
 Seguí al pie de la letra **`actualizacion/INSTRUCCIONES.md`**. Cubre dos entradas:
